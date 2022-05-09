@@ -1,0 +1,15 @@
+[package]
+name = "bitcoin-cosign"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "4.0.1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+reqwest = "0.11.10"
+
+[lib]
+name = "cosign"
+path = "src/lib/mod.rs"
