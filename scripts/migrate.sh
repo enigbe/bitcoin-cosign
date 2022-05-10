@@ -8,5 +8,7 @@ DB_NAME="${POSTGRES_DB:=cosign}"
 DB_PORT="${POSTGRES_PORT:=5432}"
 
 export DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}
-sqlx migrate add create_users_table
-sqlx migrate add create_addresses_table
+# sqlx migrate add create_users_table
+# sqlx migrate add create_addresses_table
+# sqlx migrate add update_users_table_serial_id
+sqlx migrate add update_addresses_table_serial_id

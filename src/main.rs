@@ -1,11 +1,20 @@
-use cosign::run;
+use cosign::configuration::get_configuration;
+use cosign::start_up::run;
+use sqlx::PgPool;
 use std::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
-    println!("Starting bitcoin-cosign server on port: {}", port);
+    let configuration = get_configuration().expect("Failed to read configuration");
+    let connection_pool = PgPool::connect(&configuration.database.connection_string())
+        .await
+        .expect("Failed to connect to Postgres.");
+    let addr = format!("127.0.0.1:{}", configuration.port);
+    let listener = TcpListener::bind(addr).expect("Failed to bind random port");
+    println!(
+        "Starting bitcoin-cosign server on port: {}",
+        configuration.port
+    );
 
-    run(listener)?.await
+    run(listener, connection_pool)?.await
 }
