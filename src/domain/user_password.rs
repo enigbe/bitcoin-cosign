@@ -1,5 +1,4 @@
 use unicode_segmentation::UnicodeSegmentation;
-use validator::validate_email;
 
 #[derive(Debug)]
 pub struct UserPassword(String);
