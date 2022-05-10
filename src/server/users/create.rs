@@ -1,4 +1,4 @@
-use crate::domain::{NewUser, UserEmail};
+use crate::domain::{NewUser, UserEmail, UserPassword};
 use actix_web::{web, HttpResponse};
 use sqlx::PgPool;
 
@@ -19,10 +19,12 @@ pub async fn create_user(req: web::Json<User>, pool: web::Data<PgPool>) -> HttpR
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
 
-    let new_user = NewUser {
-        email,
-        password: req.0.password,
+    let password = match UserPassword::parse(req.0.password) {
+        Ok(password) => password,
+        Err(_) => return HttpResponse::BadRequest().finish(),
     };
+
+    let new_user = NewUser { email, password };
 
     // 2. TODO: hash password
     // 3. save record to DB
@@ -44,7 +46,7 @@ pub async fn insert_user(pool: &PgPool, new_user: &NewUser) -> Result<(), sqlx::
         VALUES ($1, $2)
         "#,
         new_user.email.as_ref(),
-        new_user.password
+        new_user.password.as_ref()
     )
     .execute(pool)
     .await
