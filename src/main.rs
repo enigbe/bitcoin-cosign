@@ -1,4 +1,4 @@
-use cosign::run;
+use cosign::start_up::run;
 use std::net::TcpListener;
 
 #[tokio::main]
