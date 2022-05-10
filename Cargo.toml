@@ -14,6 +14,8 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 reqwest = { version = "0.11.10", features = ["json"]}
 serde = {version = "1.0.137", features = ["derive"]}
 serde_json = "1.0.81"
+config = "0.13.1"
+uuid = {version = "1.0.0", features = ["v4"]}
 
 [dependencies.sqlx]
 version = "0.5.13"
