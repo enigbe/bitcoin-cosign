@@ -16,6 +16,9 @@ serde = {version = "1.0.137", features = ["derive"]}
 serde_json = "1.0.81"
 config = "0.13.1"
 uuid = {version = "1.0.0", features = ["v4"]}
+unicode-segmentation = "1"
+claim = "0.5.0"
+validator = "0.15.0"
 
 [dependencies.sqlx]
 version = "0.5.13"
