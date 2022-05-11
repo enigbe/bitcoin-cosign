@@ -1,4 +1,4 @@
-use crate::server::create_user;
+use crate::routes::create_user;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use sqlx::PgPool;
