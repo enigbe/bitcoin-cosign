@@ -1,9 +1,4 @@
-use bdk::bitcoin::Network::Regtest;
 use cosign::configuration::get_configuration;
-use cosign::domain::utils::{
-    generate_extended_key, generate_mnemonic, generate_seed_from_mnemonic, generate_xpriv,
-    generate_xpub,
-};
 use cosign::start_up::run;
 use sqlx::PgPool;
 use std::net::TcpListener;

@@ -33,7 +33,3 @@ features = [
     "postgres",
     "migrate"
 ]
-
-[[bin]]
-name = "utils"
-path = "src/domain/utils.rs"
