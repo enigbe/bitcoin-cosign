@@ -1,4 +1,5 @@
-use bdk::bitcoin::Network::Regtest;
+use std::fmt::format;
+
 use bdk::keys::bip39::{Language, Mnemonic};
 use bdk::keys::{DerivableKey, ExtendedKey};
 use bitcoin::secp256k1::Secp256k1;
@@ -20,7 +21,8 @@ pub fn generate_mnemonic() -> Mnemonic {
 
 // 2. Generate seed from mnemonic
 pub fn generate_seed_from_mnemonic(mnemonic: &Mnemonic, passphrase: &str) -> [u8; 64] {
-    let seed = mnemonic.to_seed(passphrase);
+    let passphrase = format!("mnemonic{}", passphrase);
+    let seed = mnemonic.to_seed(passphrase.as_str());
     seed
 }
 
@@ -49,7 +51,10 @@ pub fn generate_base58_xpub(xkey: ExtendedKey, network: Network) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::domain::generate_mnemonic;
+    use crate::utils::{
+        generate_base58_xpub, generate_extended_key, generate_mnemonic, generate_seed_from_mnemonic,
+    };
+    use bdk::bitcoin::network::constants::Network::Regtest;
     use bdk::keys::bip39::Language;
 
     #[test]
@@ -58,13 +63,17 @@ mod tests {
         assert_eq!(mnemonic.language(), Language::English);
         assert_eq!(mnemonic.word_count(), 24);
     }
+
+    #[test]
+    fn generate_valid_base58_xpub() {
+        let mnemonic = generate_mnemonic();
+        let xkey = generate_extended_key(&mnemonic);
+        let xpub = generate_base58_xpub(xkey, Regtest);
+
+        println!("{}", xpub);
+        println!("{}", xpub.len());
+
+        // assert_eq!(mnemonic.language(), Language::English);
+        // assert_eq!(mnemonic.word_count(), 24);
+    }
 }
-
-// fn main() {
-//     let mnemonic = generate_mnemonic();
-//     let seed = generate_seed_from_mnemonic(&mnemonic, "mnemonic");
-//     let xkey = generate_extended_key(&mnemonic);
-//     let xpub = generate_base58_xpub(xkey, Regtest);
-
-//     println!("xpub: {}", xpub);
-// }
