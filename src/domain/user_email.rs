@@ -27,12 +27,6 @@ mod tests {
     use crate::domain::UserEmail;
     use claim::{assert_err, assert_ok};
 
-    // #[test]
-    // fn a_256_graphene_long_email_is_valid() {
-    //     let email = "a".repeat(256);
-    //     assert_ok!(UserEmail::parse(email));
-    // }
-
     #[test]
     fn email_missing_at_symbol_is_rejected() {
         let email = "johndoe.com".to_string();
