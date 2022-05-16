@@ -7,7 +7,7 @@ use sqlx::PgPool;
 /// email and a password field
 /// e.g. {"email": "user@email.com", "password": "verysecret"}
 pub async fn create_user(req: web::Json<User>, pool: web::Data<PgPool>) -> HttpResponse {
-    // 1. create use
+    // 1. create user
     // 1.1. TODO: hash password
     let new_user = match req.0.try_into() {
         Ok(user) => user,
