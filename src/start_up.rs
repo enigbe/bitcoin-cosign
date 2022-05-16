@@ -1,4 +1,4 @@
-use crate::routes::create_user;
+use crate::routes::{collect_xpub, create_user};
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpResponse, HttpServer};
 use sqlx::PgPool;
@@ -16,6 +16,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
         App::new()
             .route("/ping", web::get().to(ping))
             .route("/create_user", web::post().to(create_user))
+            .route("/collect_xpubs", web::patch().to(collect_xpub))
             .app_data(db_pool.clone())
     })
     .listen(listener)?
