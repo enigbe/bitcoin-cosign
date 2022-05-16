@@ -1,12 +1,11 @@
 use std::str::FromStr;
 
-use actix_web::{web::{self, Json}, HttpResponse};
-// use crypto::sha2::Sha256;
+use actix_web::{web::{self, Json}, HttpResponse, http::header::ContentType};
+use reqwest::StatusCode;
 use sqlx::PgPool;
-use crate::domain::{ Xpubs };
+use crate::domain::{ Xpubs, GenerateAddressData, GenerateAddressResponse };
 use bdk::bitcoin::{Address, WScriptHash, util::bip32::ExtendedPubKey, hashes::sha256};
 use bdk::bitcoin::blockdata::opcodes::all::{OP_PUSHNUM_2, OP_PUSHNUM_3, OP_CHECKMULTISIG};
-// use bdk::bitcoin::util::base58::from_check;
 use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
 
@@ -27,9 +26,9 @@ pub async fn gen_multisig_address(x_pubs: web::Json<Xpubs>, pool: web::Data<PgPo
 
     let address = Address::p2wsh(&script_from_wt_hash, bdk::bitcoin::Network::Testnet);
    
-    println!("The generated address is: {}", address);
-
-    HttpResponse::Ok().finish()
+    let resp = GenerateAddressResponse::new("Address generated successfully", GenerateAddressData::new(&address));
+    
+    HttpResponse::Ok().content_type(ContentType::json()).json(&resp)
 }
 
 
