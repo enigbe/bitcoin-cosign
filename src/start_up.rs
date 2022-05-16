@@ -16,7 +16,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
         App::new()
             .route("/ping", web::get().to(ping))
             .route("/create_user", web::post().to(create_user))
-            .route("/collect_xpub", web::patch().to(collect_xpub))
+            .route("/collect_xpubs", web::patch().to(collect_xpub))
             .app_data(db_pool.clone())
     })
     .listen(listener)?

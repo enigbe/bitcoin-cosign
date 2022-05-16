@@ -111,7 +111,7 @@ async fn collect_xpubs_returns_200_for_existing_user() {
     let test_app = spawn_app().await;
     let client = reqwest::Client::new();
     let create_user_url = format!("{}/create_user", &test_app.address);
-    let collect_xpub_url = format!("{}/collect_xpub", &test_app.address);
+    let collect_xpub_url = format!("{}/collect_xpubs", &test_app.address);
 
     let mut user_body = HashMap::new();
     user_body.insert("email".to_string(), "user@email.com".to_string());
@@ -168,7 +168,7 @@ async fn collect_xpubs_returns_403_for_nonexistent_users() {
     let test_app = spawn_app().await;
     let client = reqwest::Client::new();
     let create_user_url = format!("{}/create_user", &test_app.address);
-    let collect_xpub_url = format!("{}/collect_xpub", &test_app.address);
+    let collect_xpub_url = format!("{}/collect_xpubs", &test_app.address);
 
     let mut user_body = HashMap::new();
     user_body.insert("email".to_string(), "user@email.com".to_string());
@@ -217,7 +217,7 @@ async fn collect_xpubs_returns_400_for_invalid_xpub() {
     // 1. Arrange
     let test_app = spawn_app().await;
     let client = reqwest::Client::new();
-    let collect_xpub_url = format!("{}/collect_xpub", &test_app.address);
+    let collect_xpub_url = format!("{}/collect_xpubs", &test_app.address);
     let mut xpub_body = HashMap::new();
     xpub_body.insert("email".to_string(), "nouser@email.com".to_string());
     xpub_body.insert("xpub1".to_string(), "notxD6NzVbkrYhZ4Ya3TiAR7aQaWqBCRKqTS2HPEacgYeFxHUTsxWp71g4A5NFvYm8RBwjbgnSeQBK2Y2jYQXrb5m3Y3qfAyQnvjoGP5UA8691B".to_string());
