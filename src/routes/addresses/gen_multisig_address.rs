@@ -1,12 +1,12 @@
 use std::str::FromStr;
 
-use actix_web::{web::{self, Json}, HttpRequest, HttpResponse, Responder};
-use crypto::sha2::Sha256;
+use actix_web::{web::{self, Json}, HttpResponse};
+// use crypto::sha2::Sha256;
 use sqlx::PgPool;
-use crate::domain::{ Xpubs, x_pub };
+use crate::domain::{ Xpubs };
 use bdk::bitcoin::{Address, WScriptHash, util::bip32::ExtendedPubKey, hashes::sha256};
 use bdk::bitcoin::blockdata::opcodes::all::{OP_PUSHNUM_2, OP_PUSHNUM_3, OP_CHECKMULTISIG};
-use bdk::bitcoin::util::base58::from_check;
+// use bdk::bitcoin::util::base58::from_check;
 use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
 
@@ -16,16 +16,16 @@ use bdk::bitcoin::hashes::Hash;
 pub async fn gen_multisig_address(x_pubs: web::Json<Xpubs>, pool: web::Data<PgPool>)-> HttpResponse {
 
     //call the module that generates xpub;
-    let serverXpub : String = "tpubD6NzVbkrYhZ4XH6i354cNhhKD9F8yZjMguBxaKChhxJT328iDwQsJHPSvGS8xXMarT6RVETm8uMX2DC1RjYKbayXnJPGt7bbfj6UpmeLP4A".to_string();
-    let x_server_pub_key = ExtendedPubKey::from_str(&serverXpub.as_str()).unwrap();
+    let server_x_pub : String = "tpubD6NzVbkrYhZ4XH6i354cNhhKD9F8yZjMguBxaKChhxJT328iDwQsJHPSvGS8xXMarT6RVETm8uMX2DC1RjYKbayXnJPGt7bbfj6UpmeLP4A".to_string();
+    let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub.as_str()).unwrap();
     let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
     let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
 
-    let scriptFromXpubs = generateScript(user_x_pub_key_1, user_x_pub_key_2, x_server_pub_key).await;
+    let script_from_xpubs = generate_script(user_x_pub_key_1, user_x_pub_key_2, x_server_pub_key).await;
 
-    let scriptFromWtHash = Script::new_v0_wsh(&scriptFromXpubs);
+    let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
 
-    let address = Address::p2wsh(&scriptFromWtHash, bdk::bitcoin::Network::Testnet);
+    let address = Address::p2wsh(&script_from_wt_hash, bdk::bitcoin::Network::Testnet);
    
     println!("The generated address is: {}", address);
 
@@ -34,7 +34,7 @@ pub async fn gen_multisig_address(x_pubs: web::Json<Xpubs>, pool: web::Data<PgPo
 
 
 
-pub async fn generateScript(x_pub : ExtendedPubKey, x_pub_2: ExtendedPubKey,  service_x_pub: ExtendedPubKey) -> WScriptHash {
+pub async fn generate_script(x_pub : ExtendedPubKey, x_pub_2: ExtendedPubKey,  service_x_pub: ExtendedPubKey) -> WScriptHash {
 
    
     let mut supplied_x_pub_byte = service_x_pub.public_key.to_bytes(); 
