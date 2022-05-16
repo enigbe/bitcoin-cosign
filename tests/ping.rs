@@ -1,14 +1,9 @@
-use cosign::configuration::{get_configuration, DatabaseSettings};
-use cosign::start_up::run;
-use reqwest;
-use sqlx::{Connection, Executor, PgConnection, PgPool};
-use std::{collections::HashMap, net::TcpListener};
-use uuid::Uuid;
+pub mod basetest;
 
-pub struct TestApplication {
-    pub address: String,
-    pub db_pool: PgPool,
-}
+use basetest::spawn_app;
+use reqwest;
+use std::{collections::HashMap};
+
 
 /// test the ping endpoint to confirm the server is running
 #[tokio::test]
@@ -233,47 +228,4 @@ async fn collect_xpubs_returns_400_for_invalid_xpub() {
 
     // 3. Assert
     assert_eq!(400, xpub_resp.status().as_u16());
-}
-
-/// Spawn an instance of the application
-async fn spawn_app() -> TestApplication {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
-    let address = format!("http://127.0.0.1:{}", port);
-
-    let mut configuration = get_configuration().expect("Failed to load configuration");
-    configuration.database.database_name = Uuid::new_v4().to_string();
-    let connection_pool = configure_database(&configuration.database).await;
-
-    let server = run(listener, connection_pool.clone()).expect("Failed to bind address");
-    let _ = tokio::spawn(server);
-
-    TestApplication {
-        address,
-        db_pool: connection_pool,
-    }
-}
-
-pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
-    // 1. Create database
-    let mut connection = PgConnection::connect(&config.connection_string_without_db())
-        .await
-        .expect("Failed to connect to Postgres.");
-
-    connection
-        .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
-        .await
-        .expect("Failed to create database.");
-
-    // 2. Migrate database
-    let connection_pool = PgPool::connect(&config.connection_string())
-        .await
-        .expect("Failed to connect to Postgres.");
-
-    sqlx::migrate!("./migrations")
-        .run(&connection_pool)
-        .await
-        .expect("Failed to migrate the database");
-
-    connection_pool
 }
