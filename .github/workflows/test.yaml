@@ -30,7 +30,7 @@ jobs:
 
     env:
       SQLX_VERSION: 0.5.5
-      SQLX_FEATURES: postgres runtime-actix-rustls native-tls
+      SQLX_FEATURES: postgres runtime-actix-rustls
 
     steps:
       - name: Checkout repository
