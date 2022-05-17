@@ -1,5 +1,8 @@
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use bdk::bitcoin::Network::Regtest;
+use bdk::blockchain::rpc::{Auth, RpcBlockchain, RpcConfig};
+use bdk::blockchain::ConfigurableBlockchain;
  
 const DIGITS58: [char; 58] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
  
@@ -43,5 +46,32 @@ fn from_base58(encoded: &str, size: usize) -> Result<Vec<u8>, String> {
         }
     }
     Ok(res)
+}
+
+// Connect to bitcoind with authenticated user info
+pub fn connect_to_bitcoind() {
+    let config = RpcConfig {
+        url: "127.0.0.1:28332".to_string(),
+        auth: Auth::UserPass {
+            username: "enigbe".to_string(),
+            password: "3cGBL4EZzv9P6ptSkXazVXXS-f08v5ctvHcEchfF62M=".to_string(),
+        },
+        network: Regtest,
+        wallet_name: "eniwallet".to_string(),
+        skip_blocks: None,
+    };
+
+    let blockchain = RpcBlockchain::from_config(&config);
+    println!("{:?}", blockchain);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::address::connect_to_bitcoind;
+
+    #[test]
+    fn test_connect_to_bitcoind() {
+        connect_to_bitcoind();
+    }
 }
  
