@@ -2,6 +2,7 @@ pub mod basetest;
 
 use basetest::base;
 use std::collections::HashMap;
+use cosign::routes::CreateUserResponse;
 
 /// Test user account creation
 #[tokio::test]
@@ -24,8 +25,10 @@ async fn create_user_returns_201_valid_json_data_test() {
         .await
         .expect("Failed to execute request");
 
+    let response_body = &response.json::<CreateUserResponse>().await.unwrap();
     // 3. Assert
-    assert_eq!(201, response.status().as_u16());
+    assert_eq!(201, response_body.status);
+    assert_eq!("SUCCESS: User account created successfully", response_body.msg);
 
     let saved = sqlx::query!("SELECT email FROM users",)
         .fetch_one(&test_app.db_pool)
