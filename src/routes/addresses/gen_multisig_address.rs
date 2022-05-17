@@ -1,13 +1,14 @@
-use std::str::FromStr;
+use std::{str::FromStr};
 
 use actix_web::{web::{self, Json}, HttpResponse, http::header::ContentType};
-use reqwest::StatusCode;
 use sqlx::PgPool;
 use crate::domain::{ Xpubs, GenerateAddressData, GenerateAddressResponse };
 use bdk::bitcoin::{Address, WScriptHash, util::bip32::ExtendedPubKey, hashes::sha256};
 use bdk::bitcoin::blockdata::opcodes::all::{OP_PUSHNUM_2, OP_PUSHNUM_3, OP_CHECKMULTISIG};
 use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
+// use bdk::database::MemoryDatabase;
+// use bdk::Wallet;
 
 
 
@@ -25,6 +26,7 @@ pub async fn gen_multisig_address(x_pubs: web::Json<Xpubs>, pool: web::Data<PgPo
     let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
 
     let address = Address::p2wsh(&script_from_wt_hash, bdk::bitcoin::Network::Testnet);
+    //validate address
    
     let resp = GenerateAddressResponse::new("Address generated successfully", GenerateAddressData::new(&address));
     
@@ -69,3 +71,12 @@ pub async fn generate_script(x_pub : ExtendedPubKey, x_pub_2: ExtendedPubKey,  s
     script_hash.unwrap()
     // return the script from the fn
 }
+
+//validate generated address
+// pub fn validate_address(script : WScriptHash, address: Address)
+// {
+//     let descriptor = script;
+//     let mut wallet = Wallet::new(descriptor, None, bdk::bitcoin::Network::Testnet, MemoryDatabase::new())?;
+
+//     wallet.add_address_validator(address);
+// }
