@@ -30,7 +30,6 @@ jobs:
 
     env:
       SQLX_VERSION: 0.5.5
-      SQLX_FEATURES: postgres runtime-actix-rustls
 
     steps:
       - name: Checkout repository
@@ -70,7 +69,6 @@ jobs:
             sqlx-cli
             --force
             --version=${{ env.SQLX_VERSION }}
-            --features "${{ env.SQLX_FEATURES }}"
             --no-default-features
             --locked
 
