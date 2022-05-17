@@ -23,6 +23,8 @@ bdk = {version = "0.17.0", features = ["rpc", "keys-bip39"]}
 rand = {version = "0.7.0", features = ["getrandom"]}
 bitcoin = "0.27.1"
 secp256k1 = "0.22.1"
+rust-crypto="0.2.36"
+sha2="0.10.2"
 
 [dependencies.sqlx]
 version = "0.5.13"
