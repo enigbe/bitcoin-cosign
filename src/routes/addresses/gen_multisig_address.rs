@@ -1,12 +1,14 @@
 use std::{str::FromStr};
-
+use crate::utils::keys;
 use actix_web::{web::{self, Json}, HttpResponse, http::header::ContentType};
 use sqlx::PgPool;
 use crate::domain::{ Xpubs, GenerateAddressData, GenerateAddressResponse };
-use bdk::bitcoin::{Address, WScriptHash, util::bip32::ExtendedPubKey, hashes::sha256};
+use bdk::{bitcoin::{Address, WScriptHash, util::bip32::ExtendedPubKey, hashes::sha256}, keys::ExtendedKey};
 use bdk::bitcoin::blockdata::opcodes::all::{OP_PUSHNUM_2, OP_PUSHNUM_3, OP_CHECKMULTISIG};
 use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
+use bdk::keys::bip39::Mnemonic; 
+use bdk::bitcoin::Network;
 // use bdk::database::MemoryDatabase;
 // use bdk::Wallet;
 
@@ -16,7 +18,7 @@ use bdk::bitcoin::hashes::Hash;
 pub async fn gen_multisig_address(x_pubs: web::Json<Xpubs>, pool: web::Data<PgPool>)-> HttpResponse {
 
     //call the module that generates xpub;
-    let server_x_pub : String = "tpubD6NzVbkrYhZ4XH6i354cNhhKD9F8yZjMguBxaKChhxJT328iDwQsJHPSvGS8xXMarT6RVETm8uMX2DC1RjYKbayXnJPGt7bbfj6UpmeLP4A".to_string();
+    let server_x_pub : String = service_generated_x_pub_key().await;
     let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub.as_str()).unwrap();
     let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
     let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
@@ -25,7 +27,7 @@ pub async fn gen_multisig_address(x_pubs: web::Json<Xpubs>, pool: web::Data<PgPo
 
     let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
 
-    let address = Address::p2wsh(&script_from_wt_hash, bdk::bitcoin::Network::Testnet);
+    let address = Address::p2wsh(&script_from_wt_hash, Network::Testnet);
     //validate address
    
     let resp = GenerateAddressResponse::new("Address generated successfully", GenerateAddressData::new(&address));
@@ -80,3 +82,11 @@ pub async fn generate_script(x_pub : ExtendedPubKey, x_pub_2: ExtendedPubKey,  s
 
 //     wallet.add_address_validator(address);
 // }
+
+pub async fn service_generated_x_pub_key () -> String {
+    let mnemonic:Mnemonic = keys::generate_mnemonic();
+
+    let xtended_key: ExtendedKey = keys::generate_extended_key(&mnemonic);
+
+    keys::generate_base58_xpub(xtended_key, Network::Testnet)
+}
