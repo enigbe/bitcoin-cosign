@@ -25,6 +25,7 @@ bitcoin = "0.27.1"
 secp256k1 = "0.22.1"
 rust-crypto="0.2.36"
 sha2="0.10.2"
+actix-rt="2.7.0"
 
 [dependencies.sqlx]
 version = "0.5.13"

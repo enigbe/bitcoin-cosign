@@ -1,6 +1,6 @@
 use std::{str::FromStr};
 use crate::utils::keys;
-use actix_web::{web::{self, Json}, HttpResponse, http::header::ContentType};
+use actix_web::{web::{self}, HttpResponse, http::header::ContentType};
 use sqlx::PgPool;
 use crate::domain::{ Xpubs, GenerateAddressData, GenerateAddressResponse };
 use bdk::{bitcoin::{Address, WScriptHash, util::bip32::ExtendedPubKey, hashes::sha256}, keys::ExtendedKey};
@@ -9,8 +9,6 @@ use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
 use bdk::keys::bip39::Mnemonic; 
 use bdk::bitcoin::Network;
-// use bdk::database::MemoryDatabase;
-// use bdk::Wallet;
 
 
 
@@ -27,7 +25,7 @@ pub async fn gen_multisig_address(x_pubs: web::Json<Xpubs>, pool: web::Data<PgPo
 
     let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
 
-    let address = Address::p2wsh(&script_from_wt_hash, Network::Testnet);
+    let address = Address::p2wsh(&script_from_wt_hash, Network::Regtest);
     //validate address
    
     let resp = GenerateAddressResponse::new("Address generated successfully", GenerateAddressData::new(&address));
@@ -74,19 +72,43 @@ pub async fn generate_script(x_pub : ExtendedPubKey, x_pub_2: ExtendedPubKey,  s
     // return the script from the fn
 }
 
-//validate generated address
-// pub fn validate_address(script : WScriptHash, address: Address)
-// {
-//     let descriptor = script;
-//     let mut wallet = Wallet::new(descriptor, None, bdk::bitcoin::Network::Testnet, MemoryDatabase::new())?;
-
-//     wallet.add_address_validator(address);
-// }
+// validate generated address
+// [TODO]- Implement proper validation of addresses
+pub fn validate_address(address: String) -> bool
+{
+    if address.len() > 20 {
+        true
+    }else {
+        false
+    }
+}
 
 pub async fn service_generated_x_pub_key () -> String {
     let mnemonic:Mnemonic = keys::generate_mnemonic();
 
     let xtended_key: ExtendedKey = keys::generate_extended_key(&mnemonic);
 
-    keys::generate_base58_xpub(xtended_key, Network::Testnet)
+    keys::generate_base58_xpub(xtended_key, Network::Regtest)
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use crate::routes::addresses::{
+       generate_script
+    };
+    use bitcoin::util::bip32::ExtendedPubKey;
+
+ 
+    #[actix_rt::test]
+    async fn generate_valid_script() {
+        let x_pub_1 =  ExtendedPubKey::from_str(&"tpubD6NzVbkrYhZ4XubsZFiR1YuVq16dxAzt3hWYFtu1sEH7w1LN5gqJnWVtzqZVKrwSej6Pja8tLr4FvyQ9gUuthQ3HVPcfy9cLXhFRjBYMcR9".to_string()).unwrap();
+        let x_pub_2 = ExtendedPubKey::from_str(&"tpubD6NzVbkrYhZ4Yb7XhcQBGeovnM5Bk5tHw7Zse5Pm5yC5q4ouAj6dSY7inH1pqQKZptFy9ZQNK7E4iDiG8WaM4pDG3T5KWpjpXjSH3r4RdPy".to_string()).unwrap();
+        let x_pub_3 = ExtendedPubKey::from_str(&"tpubD6NzVbkrYhZ4XH6i354cNhhKD9F8yZjMguBxaKChhxJT328iDwQsJHPSvGS8xXMarT6RVETm8uMX2DC1RjYKbayXnJPGt7bbfj6UpmeLP4A".to_string()).unwrap();
+        let generated_script = generate_script(x_pub_1, x_pub_2, x_pub_3).await;
+        assert_eq!(generated_script.len(), 32);
+    }
 }
