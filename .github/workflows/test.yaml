@@ -13,20 +13,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-#  check:
-#    name: Check
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v2
-#      - uses: actions-rs/toolchain@v1
-#        with:
-#          profile: minimal
-#          toolchain: stable
-#          override: true
-#      - uses: actions-rs/cargo@v1
-#        with:
-#          command: check
-
   test:
     name: Test
 
@@ -43,7 +29,7 @@ jobs:
           - 5432:5432
 
     env:
-      SQLX_VERSION: 0.5.5
+      SQLX_VERSION: 0.5.13
       SQLX_FEATURES: postgres
 
     steps:
@@ -53,6 +39,15 @@ jobs:
       - name: Cache dependencies
         id: cache-dependencies
         uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
@@ -83,7 +78,8 @@ jobs:
         run: |
           sudo apt-get install libpq-dev -y
           SKIP_DOCKER=true ./scripts/init_db.sh
-          - name: Run cargo test
-            uses: actions-rs/cargo@v1
-            with:
-              command: test
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
