@@ -5,7 +5,8 @@ on:
     branches:
       - ft/1/continuous-integration
   pull_request:
-    types: [opened, synchronize, reopened]
+    branches:
+      - ft/1/continuous-integration
 
 env:
   CARGO_TERM_COLOR: always
