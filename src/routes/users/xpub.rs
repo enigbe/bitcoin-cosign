@@ -1,6 +1,6 @@
 use crate::domain::user_xpub::CollectXpub;
 use crate::domain::UserXpubs;
-use actix_web::{web, HttpResponse, http::StatusCode};
+use actix_web::{http::StatusCode, web, HttpResponse};
 use sqlx::PgPool;
 
 pub struct SavedUser {
@@ -23,7 +23,8 @@ pub async fn collect_xpub(req: web::Json<CollectXpub>, pool: web::Data<PgPool>) 
                 msg: format!("ERROR: Error parsing input. {}", e),
                 status: StatusCode::BAD_REQUEST.as_u16(),
             };
-            return HttpResponse::BadRequest().json(rsp_msg); },
+            return HttpResponse::BadRequest().json(rsp_msg);
+        }
     };
     // 2. Check if user email exists in DB
     // 2.1 If no record, return 40x
@@ -35,24 +36,27 @@ pub async fn collect_xpub(req: web::Json<CollectXpub>, pool: web::Data<PgPool>) 
                 status: StatusCode::BAD_REQUEST.as_u16(),
             };
             return HttpResponse::Forbidden().json(rsp_msg);
-        },
+        }
     };
     // 2.2 If a record exists, update the record with provided xpubs
     match update_user_xpubs(&pool, &user_xpubs).await {
         Ok(_) => {
             let rsp_msg = CollectXpubResponse {
-                msg: format!("Extended public keys for user {} sucessfully uploaded", existing_user.email),
+                msg: format!(
+                    "Extended public keys for user {} sucessfully uploaded",
+                    existing_user.email
+                ),
                 status: StatusCode::OK.as_u16(),
             };
             HttpResponse::Ok().json(rsp_msg)
-        },
+        }
         Err(e) => {
             let rsp_msg = CollectXpubResponse {
-                msg: format!("ERROR: Error update user record. {:?}", e),
+                msg: format!("ERROR: Error updating user record. {:?}", e),
                 status: StatusCode::BAD_REQUEST.as_u16(),
             };
             return HttpResponse::BadRequest().json(rsp_msg);
-        },
+        }
     }
 }
 
@@ -79,7 +83,7 @@ pub async fn find_saved_user(
 }
 
 /// Update database for saved user with provided xpubs
-/// /// ***
+/// ***
 /// Parameters:
 ///     pool (&PgPool): A shared reference to a Postgres connection pool
 ///     user_xpub (&UserXpubs): A shared reference to a UserXpubs instance

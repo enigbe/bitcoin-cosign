@@ -16,12 +16,11 @@ use bdk::{
 };
 use sqlx::PgPool;
 use std::str::FromStr;
-use std::sync::Arc;
 
 //generate 2-0f-3 multisig address from user supplied xpubs
 pub async fn gen_multisig_address(
     x_pubs: web::Json<Xpubs>,
-    pool: web::Data<PgPool>,
+    _pool: web::Data<PgPool>,
 ) -> HttpResponse {
     //call the module that generates xpub;
     let server_x_pub: String = service_generated_x_pub_key().await;
