@@ -4,11 +4,10 @@ use bdk::keys::bip39::{Language, Mnemonic};
 use bdk::keys::{DerivableKey, ExtendedKey};
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::base58::check_encode_slice;
-use bitcoin::util::bip32::ExtendedPrivKey;
+use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Network;
 use rand::random;
 
-/// Generate parent extended public key
 // 1. Generate mnemonic
 pub fn generate_mnemonic() -> Mnemonic {
     let english = Language::English;
@@ -36,13 +35,26 @@ pub fn generate_extended_key(mnemonic: &Mnemonic) -> ExtendedKey {
     xkey
 }
 
-// 4. Generate master private key from extended key
+// 4.1 Generate master private key from extended key
 pub fn generate_xpriv(xkey: ExtendedKey, network: Network) -> ExtendedPrivKey {
     let xpriv = xkey.into_xprv(network).unwrap();
     xpriv
 }
 
-// 5. Generate base58check-encoded master public key from master private key
+// 4.2 Generate base58 encoding of master private key from extended key
+pub fn generate_base58_xpriv(xkey: ExtendedKey, network: Network) -> String {
+    let xpriv = xkey.into_xprv(network).unwrap();
+    check_encode_slice(&xpriv.encode())
+}
+
+// 5.1 Generate master public key from master private key
+pub fn generate_xpub(xkey: ExtendedKey, network: Network) -> ExtendedPubKey {
+    let secp = Secp256k1::new();
+    let xpub = xkey.into_xpub(network, &secp);
+    xpub
+}
+
+// 5.2 Generate base58check-encoded master public key from master private key
 pub fn generate_base58_xpub(xkey: ExtendedKey, network: Network) -> String {
     let secp = Secp256k1::new();
     let xpub = xkey.into_xpub(network, &secp);
