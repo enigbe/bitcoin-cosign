@@ -1,12 +1,14 @@
-use std::fmt::format;
-
 use bdk::keys::bip39::{Language, Mnemonic};
 use bdk::keys::{DerivableKey, ExtendedKey};
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::base58::check_encode_slice;
-use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
+use bitcoin::util::bip32::{ChildNumber, Error, ExtendedPrivKey, ExtendedPubKey};
 use bitcoin::Network;
 use rand::random;
+
+pub enum KeysError {
+    XpubError(String),
+}
 
 // 1. Generate mnemonic
 pub fn generate_mnemonic() -> Mnemonic {
@@ -61,12 +63,26 @@ pub fn generate_base58_xpub(xkey: ExtendedKey, network: Network) -> String {
     check_encode_slice(&xpub.encode())
 }
 
+// 6. Generate child public key from extended public key
+pub fn generate_child_xpub(xpub: &ExtendedPubKey, index: u32) -> Result<ExtendedPubKey, Error> {
+    let secp = Secp256k1::new();
+    let child_number = ChildNumber::Normal { index };
+    let child_xpub = xpub.ckd_pub(&secp, child_number);
+
+    match child_xpub {
+        Ok(xpub) => Ok(xpub),
+        Err(err) => Err(err),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::utils::{
-        generate_base58_xpub, generate_extended_key, generate_mnemonic, generate_seed_from_mnemonic,
+        generate_base58_xpub, generate_child_xpub, generate_extended_key, generate_mnemonic,
+        generate_seed_from_mnemonic, generate_xpub,
     };
     use bdk::bitcoin::network::constants::Network::Regtest;
+    use bdk::bitcoin::util::base58::check_encode_slice;
     use bdk::keys::bip39::Language;
 
     #[test]
@@ -77,15 +93,36 @@ mod tests {
     }
 
     #[test]
+    fn generate_valid_seed_from_mnemonic() {
+        let mnemonic = generate_mnemonic();
+        let passphrase = "super-secret";
+        let seed = generate_seed_from_mnemonic(&mnemonic, passphrase);
+
+        assert_eq!(64, seed.len());
+    }
+
+    #[test]
     fn generate_valid_base58_xpub() {
         let mnemonic = generate_mnemonic();
         let xkey = generate_extended_key(&mnemonic);
         let xpub = generate_base58_xpub(xkey, Regtest);
 
-        println!("{}", xpub);
-        println!("{}", xpub.len());
+        assert_eq!(111, xpub.len());
+        assert_eq!(mnemonic.word_count(), 24);
+    }
 
-        // assert_eq!(mnemonic.language(), Language::English);
-        // assert_eq!(mnemonic.word_count(), 24);
+    #[test]
+    fn generate_valid_child_xpub() {
+        // 1. Arrange
+        let mnemonic = generate_mnemonic();
+        let xkey = generate_extended_key(&mnemonic);
+        let xpub = generate_xpub(xkey, Regtest);
+        let index = 9;
+
+        // 2. Act
+        let child_xpub = generate_child_xpub(&xpub, index).unwrap();
+
+        // 3. Assert
+        assert_eq!(111, check_encode_slice(&child_xpub.encode()).len());
     }
 }
