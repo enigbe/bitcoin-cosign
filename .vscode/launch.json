@@ -1,0 +1,83 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'cosign'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=bitcoin-cosign"
+                ],
+                "filter": {
+                    "name": "cosign",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'bitcoin-cosign'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=bitcoin-cosign",
+                    "--package=bitcoin-cosign"
+                ],
+                "filter": {
+                    "name": "bitcoin-cosign",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'bitcoin-cosign'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=bitcoin-cosign",
+                    "--package=bitcoin-cosign"
+                ],
+                "filter": {
+                    "name": "bitcoin-cosign",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'ping'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=ping",
+                    "--package=bitcoin-cosign"
+                ],
+                "filter": {
+                    "name": "ping",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
