@@ -78,7 +78,7 @@ pub async fn masterkeys(req: web::Json<RequestNetwork>, pool: web::Data<PgPool>)
                 msg: "SUCCESS: Master extended keys saved to database".to_string(),
                 status: StatusCode::OK.as_u16(),
             };
-            return HttpResponse::BadRequest().json(rsp_msg);
+            return HttpResponse::Ok().json(rsp_msg);
         }
         Err(e) => {
             let rsp_msg = MasterKeysResponse {
