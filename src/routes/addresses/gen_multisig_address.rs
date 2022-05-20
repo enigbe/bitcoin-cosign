@@ -14,6 +14,7 @@ use bdk::{
     bitcoin::{hashes::sha256, util::bip32::ExtendedPubKey, Address, WScriptHash},
     keys::ExtendedKey,
 };
+use bitcoin::secp256k1::key;
 use sqlx::PgPool;
 use std::str::FromStr;
 
@@ -23,7 +24,7 @@ pub async fn gen_multisig_address(
     _pool: web::Data<PgPool>,
 ) -> HttpResponse {
     //call the module that generates xpub;
-    let server_x_pub: String = service_generated_x_pub_key().await;
+    let server_x_pub: String = service_child_x_pub_key().await;
     let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub.as_str()).unwrap();
     let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
     let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
@@ -93,12 +94,18 @@ pub fn validate_address(address: String) -> bool {
     }
 }
 
-pub async fn service_generated_x_pub_key() -> String {
-    let mnemonic: Mnemonic = keys::generate_mnemonic();
+pub async fn service_child_x_pub_key() -> String {
 
-    let xtended_key: ExtendedKey = keys::generate_extended_key(&mnemonic);
+    let mnemonic = keys::generate_mnemonic();
+    let xkey = keys::generate_extended_key(&mnemonic);
 
-    keys::generate_base58_xpub(xtended_key, Network::Regtest)
+    let x_priv = keys::generate_xpriv(xkey, Network::Regtest);
+
+    let x_pub = keys::generate_xpub_from_xpriv(&x_priv);
+
+    let child_pub_key = keys::generate_child_xpub(&x_pub, 1);
+
+    child_pub_key.unwrap().to_string()
 }
 
 #[cfg(test)]
