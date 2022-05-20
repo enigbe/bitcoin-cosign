@@ -1,4 +1,4 @@
-use crate::domain::{GenerateAddressData, GenerateAddressResponse, Xpubs, NewAddressData};
+use crate::domain::{GenerateAddressData, GenerateAddressResponse, Xpubs, NewAddressData, DerivationIndex};
 use crate::utils::keys;
 use bitcoin::secp256k1::key;
 use sqlx::PgPool;
@@ -17,11 +17,6 @@ use bdk::{
 };
 use std::str::FromStr;
 
-
-pub struct AddressIndex {
-    derivation_path: String
-}
-
 //generate 2-0f-3 multisig address from user supplied xpubs
 pub async fn gen_multisig_address(
     x_pubs: web::Json<Xpubs>,
@@ -33,9 +28,27 @@ pub async fn gen_multisig_address(
     let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
     let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
 
-    let child_server_x_pub = keys::generate_child_xpub(&x_server_pub_key, 1).unwrap();
-    let child_x_pub_1 = keys::generate_child_xpub(&user_x_pub_key_1, 1).unwrap();
-    let child_x_pub_2 = keys::generate_child_xpub(&user_x_pub_key_2, 1).unwrap();
+    let last_index = get_db_last_derivation_index(&pool).await;
+
+    let mut derivation_index = 0;
+
+    match last_index {
+        Ok(rt_derivation_index) => {
+                
+         derivation_index = rt_derivation_index.derivation_path.parse().unwrap();
+
+         derivation_index += 1;
+
+        },
+        Err(error) => {
+            
+            derivation_index += 1;
+        }
+    }
+
+    let child_server_x_pub = keys::generate_child_xpub(&x_server_pub_key, derivation_index).unwrap();
+    let child_x_pub_1 = keys::generate_child_xpub(&user_x_pub_key_1, derivation_index).unwrap();
+    let child_x_pub_2 = keys::generate_child_xpub(&user_x_pub_key_2, derivation_index).unwrap();
 
     let script_from_xpubs =
         generate_script(child_x_pub_1, child_x_pub_2, child_server_x_pub).await;
@@ -43,10 +56,11 @@ pub async fn gen_multisig_address(
     let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
 
     let address = Address::p2wsh(&script_from_wt_hash, x_server_pub_key.network);
-    //validate address
+    // [TODO] validate address
+    // [TODO] replace the user id with a real user id
     let new_address_data  = NewAddressData  {
-        user_id: 1,
-        derivation_path: "12".to_string(),
+        user_id: 1, 
+        derivation_path: derivation_index.to_string(),
         child_pubk_1: child_x_pub_1.to_string(),
         child_pubk_2: child_x_pub_2.to_string(),
         service_pubk: child_server_x_pub.to_string(),
@@ -130,9 +144,9 @@ pub async fn service_child_x_pub_key(pool: &PgPool) -> String {
     child_pub_key.unwrap().to_string()
 }
 
-pub async fn get_db_last_derivation_index(pool: &PgPool) -> Result<AddressIndex, sqlx::Error>{
+pub async fn get_db_last_derivation_index(pool: &PgPool) -> Result<DerivationIndex, sqlx::Error>{
     let derivation_index = sqlx::query_as!(
-        AddressIndex,
+        DerivationIndex,
         r#"
         select derivation_path from addresses ORDER by derivation_path DESC LIMIT 1
         "#

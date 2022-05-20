@@ -14,4 +14,4 @@ pub use user_xpub::UserXpubs;
 pub use xpub::Xpub;
 pub use x_pub::Xpubs;
 pub use generated_address::{ GenerateAddressData, GenerateAddressResponse};
-pub use new_address_data::{AddressData, NewAddressData};
+pub use new_address_data::{AddressData, NewAddressData, DerivationIndex};

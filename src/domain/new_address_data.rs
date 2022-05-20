@@ -16,3 +16,8 @@ pub struct NewAddressData {
     pub child_pubk_2: String,
     pub service_pubk: String,
 }
+
+
+pub struct DerivationIndex {
+    pub derivation_path: String
+}
