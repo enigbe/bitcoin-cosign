@@ -3,10 +3,11 @@
 
 pub mod base {
     use cosign::configuration::{get_configuration, DatabaseSettings};
+    pub use cosign::routes::masterkeys::MasterKeysResponse;
     use cosign::start_up::run;
-    use uuid::Uuid;
     use sqlx::{Connection, Executor, PgConnection, PgPool};
-    use std::{ net::TcpListener};
+    use std::net::TcpListener;
+    use uuid::Uuid;
 
     pub struct TestApplication {
         pub address: String,

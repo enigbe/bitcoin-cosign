@@ -1,3 +1,3 @@
 pub mod masterkeys;
 
-pub use masterkeys::masterkeys;
+pub use masterkeys::{masterkeys, MasterKeysResponse};

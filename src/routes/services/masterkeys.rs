@@ -2,20 +2,21 @@ use crate::utils::{generate_service_master_keys, keys::ServiceMasterKeys};
 use actix_web::{http::StatusCode, web, HttpResponse};
 use bdk::bitcoin::Network;
 use sqlx::PgPool;
+use std::cmp::PartialEq;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct RequestNetwork {
     network: String,
 }
 
-#[derive(Debug, serde::Serialize)]
-struct MasterKeysResponse {
-    msg: String,
-    status: u16,
-    data: Option<MasterKeys>,
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct MasterKeysResponse {
+    pub msg: String,
+    pub status: u16,
+    pub data: Option<MasterKeys>,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct MasterKeys {
     pub master_xpriv: String,
     pub master_xpub: String,
