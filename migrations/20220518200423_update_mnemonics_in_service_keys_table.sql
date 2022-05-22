@@ -1,5 +1,7 @@
 -- Add migration script here
 
+-- Add missing mnemonic column in service_keys table
+
 BEGIN;
 
 CREATE SEQUENCE service_keys_id_sequence;

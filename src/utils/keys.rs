@@ -14,6 +14,7 @@ pub struct ServiceMasterKeys {
     pub mnemonic: Mnemonic,
     pub xpriv: String,
     pub xpub: String,
+    pub network: Network,
 }
 
 // 1. Generate mnemonic
@@ -104,6 +105,7 @@ pub fn generate_service_master_keys(network: Network) -> ServiceMasterKeys {
         mnemonic,
         xpriv: xpriv_str,
         xpub: xpub_str,
+        network,
     }
 }
 

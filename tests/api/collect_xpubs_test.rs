@@ -1,13 +1,11 @@
-pub mod basetest;
-
-use basetest::base;
+use crate::basetest::spawn_app;
 use std::collections::HashMap;
 
 /// Test that existing users can upload two xpubs
 #[tokio::test]
 async fn collect_xpubs_returns_200_for_existing_user() {
     // 1. Arrange
-    let test_app = base::spawn_app().await;
+    let test_app = spawn_app().await;
     let client = reqwest::Client::new();
     let create_user_url = format!("{}/create_user", &test_app.address);
     let collect_xpub_url = format!("{}/collect_xpubs", &test_app.address);
@@ -64,7 +62,7 @@ async fn collect_xpubs_returns_200_for_existing_user() {
 #[tokio::test]
 async fn collect_xpubs_returns_403_for_nonexistent_users() {
     // 1. Arrange
-    let test_app = base::spawn_app().await;
+    let test_app = spawn_app().await;
     let client = reqwest::Client::new();
     let create_user_url = format!("{}/create_user", &test_app.address);
     let collect_xpub_url = format!("{}/collect_xpubs", &test_app.address);
@@ -114,7 +112,7 @@ async fn collect_xpubs_returns_403_for_nonexistent_users() {
 #[tokio::test]
 async fn collect_xpubs_returns_400_for_invalid_xpub() {
     // 1. Arrange
-    let test_app = base::spawn_app().await;
+    let test_app = spawn_app().await;
     let client = reqwest::Client::new();
     let collect_xpub_url = format!("{}/collect_xpubs", &test_app.address);
     let mut xpub_body = HashMap::new();
