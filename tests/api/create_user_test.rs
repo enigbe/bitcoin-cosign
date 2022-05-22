@@ -1,13 +1,11 @@
-pub mod basetest;
-
-use basetest::base;
+use crate::basetest::spawn_app;
 use std::collections::HashMap;
 
 /// Test user account creation
 #[tokio::test]
 async fn create_user_returns_201_valid_json_data_test() {
     // 1. Arrange
-    let test_app = base::spawn_app().await;
+    let test_app = spawn_app().await;
     let client = reqwest::Client::new();
 
     // 2. Act
@@ -39,7 +37,7 @@ async fn create_user_returns_201_valid_json_data_test() {
 #[tokio::test]
 async fn create_user_returns_400_json_fields_present_but_empty_test() {
     // 1. Arrange
-    let test_app = base::spawn_app().await;
+    let test_app = spawn_app().await;
     let client = reqwest::Client::new();
     let test_cases = vec![
         (

@@ -1,15 +1,12 @@
-pub mod basetest;
-
-use basetest::base;
+use crate::basetest::spawn_app;
 use reqwest;
-use std::{collections::HashMap};
-
+use std::collections::HashMap;
 
 /// test the ping endpoint to confirm the server is running
 #[tokio::test]
 async fn ping_test() {
     // 1. Arrange
-    let test_app = base::spawn_app().await;
+    let test_app = spawn_app().await;
     let client = reqwest::Client::new();
 
     // 2. Act
@@ -23,5 +20,3 @@ async fn ping_test() {
     assert!(response.status().is_success());
     assert_eq!(Some(0), response.content_length());
 }
-
-
