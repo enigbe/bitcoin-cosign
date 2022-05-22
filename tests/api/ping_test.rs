@@ -1,6 +1,5 @@
 use crate::basetest::spawn_app;
 use reqwest;
-use std::collections::HashMap;
 
 /// test the ping endpoint to confirm the server is running
 #[tokio::test]

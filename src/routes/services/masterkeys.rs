@@ -82,7 +82,7 @@ pub async fn masterkeys(req: web::Json<RequestNetwork>, pool: web::Data<PgPool>)
                         status: StatusCode::BAD_REQUEST.as_u16(),
                         data: None,
                     };
-                    return HttpResponse::BadRequest().json(rsp_msg);
+                    return HttpResponse::InternalServerError().json(rsp_msg);
                 }
             }
         }
