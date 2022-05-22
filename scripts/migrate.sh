@@ -16,6 +16,7 @@ export DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${
 # sqlx migrate add create_addresses_table_if_not_exist
 # sqlx migrate add create_service_keys_table
 # sqlx migrate add update_mnemonics_in_service_keys_table
+# sqlx migrate add add_network_to_service_keys_table
 
 
 
