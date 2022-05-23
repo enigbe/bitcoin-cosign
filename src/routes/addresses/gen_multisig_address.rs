@@ -1,8 +1,8 @@
-use crate::domain::{GenerateAddressData, GenerateAddressResponse, Xpubs, NewAddressData, DerivationIndex};
-use crate::utils::keys;
-use bitcoin::secp256k1::key;
-use sqlx::PgPool;
+use crate::domain::{
+    DerivationIndex, GenerateAddressData, GenerateAddressResponse, NewAddressData, Xpubs,
+};
 use crate::routes::masterkeys::MasterKeys;
+use crate::utils::keys;
 use actix_web::{
     http::header::ContentType,
     web::{self},
@@ -11,55 +11,53 @@ use actix_web::{
 use bdk::bitcoin::blockdata::opcodes::all::{OP_CHECKMULTISIG, OP_PUSHNUM_2, OP_PUSHNUM_3};
 use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
-use bdk::keys::bip39::Mnemonic;
-use bdk::{
-    bitcoin::{hashes::sha256, util::bip32::ExtendedPubKey, Address, WScriptHash}
-};
+use bdk::bitcoin::{hashes::sha256, util::bip32::ExtendedPubKey, Address, WScriptHash};
+use sqlx::PgPool;
 use std::str::FromStr;
 
 //generate 2-0f-3 multisig address from user supplied xpubs
 pub async fn gen_multisig_address(
     x_pubs: web::Json<Xpubs>,
     pool: web::Data<PgPool>,
-)  -> HttpResponse {
-    //call the module that generates xpub;
-    let server_x_pub: String = service_child_x_pub_key(&pool).await;
-    let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub.as_str()).unwrap();
+) -> HttpResponse {
+     match service_child_x_pub_key(&pool).await {
+        Ok(server_x_pub_key) => {
+            let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub_key.as_str()).unwrap();
     let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
     let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
 
-    let last_index = get_db_last_derivation_index(&pool).await;
+    //[TODO] Get login user data from header
+    let user_id = 1;
+
+    let last_index = get_user_derivation_index(user_id, &pool).await;
 
     let mut derivation_index = 0;
 
     match last_index {
-        Ok(rt_derivation_index) => {
-                
-         derivation_index = rt_derivation_index.derivation_path.parse().unwrap();
+        Ok(last_index) => {
+            derivation_index = last_index.derivation_path.parse().unwrap();
 
-         derivation_index += 1;
-
-        },
+            derivation_index += 1;
+        }
         Err(error) => {
-            
             derivation_index += 1;
         }
     }
 
-    let child_server_x_pub = keys::generate_child_xpub(&x_server_pub_key, derivation_index).unwrap();
+    let child_server_x_pub =
+        keys::generate_child_xpub(&x_server_pub_key, derivation_index).unwrap();
     let child_x_pub_1 = keys::generate_child_xpub(&user_x_pub_key_1, derivation_index).unwrap();
     let child_x_pub_2 = keys::generate_child_xpub(&user_x_pub_key_2, derivation_index).unwrap();
 
-    let script_from_xpubs =
-        generate_script(child_x_pub_1, child_x_pub_2, child_server_x_pub).await;
+    let script_from_xpubs = generate_script(child_x_pub_1, child_x_pub_2, child_server_x_pub).await;
 
     let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
 
     let address = Address::p2wsh(&script_from_wt_hash, x_server_pub_key.network);
     // [TODO] validate address
     // [TODO] replace the user id with a real user id
-    let new_address_data  = NewAddressData  {
-        user_id: 1, 
+    let new_address_data = NewAddressData {
+        user_id,
         derivation_path: derivation_index.to_string(),
         child_pubk_1: child_x_pub_1.to_string(),
         child_pubk_2: child_x_pub_2.to_string(),
@@ -74,12 +72,22 @@ pub async fn gen_multisig_address(
 
     let resp = GenerateAddressResponse::new(
         "Address generated successfully",
-        GenerateAddressData::new(&address),
+        Some(GenerateAddressData::new(&address)),
     );
 
     HttpResponse::Ok()
         .content_type(ContentType::json())
         .json(&resp)
+        }
+        Err(error) => {
+            let resp = GenerateAddressResponse::new(
+                "Error retreiving service keys {:?}",
+                None,
+            );
+            return HttpResponse::ExpectationFailed().json(resp);
+        }
+    }
+    
 }
 
 pub async fn generate_script(
@@ -128,28 +136,36 @@ pub fn validate_address(address: String) -> bool {
         false
     }
 }
-//we might also need to save the network
-pub async fn service_child_x_pub_key(pool: &PgPool) -> String {
-
+pub async fn service_child_x_pub_key(pool: &PgPool) -> Result<String, sqlx::Error> {
     let master_keys = get_master_service_keys(&pool).await;
 
-    let x_pub_key = ExtendedPubKey::from_str(&master_keys.unwrap().master_xpub).unwrap();
+    let mut x_pub_key: ExtendedPubKey;
+    match master_keys {
+        Ok(master_key) => {
+            x_pub_key = ExtendedPubKey::from_str(&master_key.master_xpub).unwrap();
 
-    let child_number = x_pub_key.child_number.to_string();
+            let child_number = x_pub_key.child_number.to_string();
 
-    let num : u32 = child_number.parse().unwrap();
+            let num: u32 = child_number.parse().unwrap();
 
-    let child_pub_key = keys::generate_child_xpub(&x_pub_key, num);
+            let child_pub_key = keys::generate_child_xpub(&x_pub_key, num);
 
-    child_pub_key.unwrap().to_string()
+          Ok(child_pub_key.unwrap().to_string())
+        }
+        Err(error) =>  Err(error)
+    }
 }
 
-pub async fn get_db_last_derivation_index(pool: &PgPool) -> Result<DerivationIndex, sqlx::Error>{
+pub async fn get_user_derivation_index(
+    user_id: i32,
+    pool: &PgPool,
+) -> Result<DerivationIndex, sqlx::Error> {
     let derivation_index = sqlx::query_as!(
         DerivationIndex,
         r#"
-        select derivation_path from addresses ORDER by derivation_path DESC LIMIT 1
-        "#
+        select derivation_path from addresses where user_id=$1 ORDER by derivation_path DESC LIMIT 1
+        "#,
+        user_id,
     )
     .fetch_one(pool)
     .await?;
@@ -157,26 +173,28 @@ pub async fn get_db_last_derivation_index(pool: &PgPool) -> Result<DerivationInd
     Ok(derivation_index)
 }
 
-pub async fn get_master_service_keys( pool: &PgPool) -> Result<MasterKeys, sqlx::Error> {
-        let keys = sqlx::query_as!(
-            MasterKeys,
-            r#"
+pub async fn get_master_service_keys(pool: &PgPool) -> Result<MasterKeys, sqlx::Error> {
+    let keys = sqlx::query_as!(
+        MasterKeys,
+        r#"
             SELECT master_xpub, master_xpriv FROM service_keys LIMIT 1
             "#
-        )
-        .fetch_one(pool)
-        .await?;
-    
-        Ok(keys)
-}
+    )
+    .fetch_one(pool)
+    .await?;
 
+    Ok(keys)
+}
 
 /// Insert new user to database
 /// ***
 /// Parameters:
 ///     pool (&PgPool): A shared reference to a Postgres connection pool
 ///     new_user (&NewUser): A shared reference to a NewUser instance
-pub async fn insert_keys(pool: &PgPool, new_address_data: &NewAddressData) -> Result<(), sqlx::Error> {
+pub async fn insert_keys(
+    pool: &PgPool,
+    new_address_data: &NewAddressData,
+) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
         INSERT INTO addresses (user_id, derivation_path, child_pubk_1, child_pubk_2, service_pubk)
@@ -198,13 +216,12 @@ pub async fn insert_keys(pool: &PgPool, new_address_data: &NewAddressData) -> Re
     Ok(())
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-    use sqlx::PgPool;
-    use crate::routes::addresses::{ generate_script, get_master_service_keys };
+    use crate::routes::addresses::{generate_script, get_master_service_keys};
     use bitcoin::util::bip32::ExtendedPubKey;
+    use sqlx::PgPool;
+    use std::str::FromStr;
 
     #[actix_rt::test]
     async fn generate_valid_script() {
@@ -214,5 +231,4 @@ mod tests {
         let generated_script = generate_script(x_pub_1, x_pub_2, x_pub_3).await;
         assert_eq!(generated_script.len(), 32);
     }
-
 }

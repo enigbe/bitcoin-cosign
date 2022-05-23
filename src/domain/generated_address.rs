@@ -3,7 +3,7 @@ use bdk::bitcoin::Address;
 #[derive(Debug, serde::Serialize)]
 pub struct GenerateAddressResponse {
   pub message: String,
-  pub data: GenerateAddressData,
+  pub data: Option<GenerateAddressData>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -22,7 +22,7 @@ impl GenerateAddressData {
 
 impl GenerateAddressResponse {
     //construct response
-    pub fn new(resp_message: &str, resp_data: GenerateAddressData) -> GenerateAddressResponse {
+    pub fn new(resp_message: &str, resp_data: Option<GenerateAddressData>) -> GenerateAddressResponse {
         GenerateAddressResponse {
             message: resp_message.to_string(),
             data: resp_data
