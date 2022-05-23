@@ -179,11 +179,13 @@ pub async fn get_user_derivation_index(
 }
 
 pub async fn get_master_service_keys(pool: &PgPool) -> Result<MasterKeys, sqlx::Error> {
+    let network = option_env!("NETWORK");
     let keys = sqlx::query_as!(
         MasterKeys,
         r#"
-            SELECT master_xpub, master_xpriv FROM service_keys LIMIT 1
-            "#
+            SELECT master_xpub, master_xpriv FROM service_keys WHERE network=$1 LIMIT 1
+            "#,
+            network,
     )
     .fetch_one(pool)
     .await?;
