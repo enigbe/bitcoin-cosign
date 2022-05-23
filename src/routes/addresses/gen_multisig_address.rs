@@ -67,7 +67,12 @@ pub async fn gen_multisig_address(
     if let Ok(_) = insert_keys(&pool, &new_address_data).await {
         HttpResponse::Created().finish();
     } else {
-        HttpResponse::InternalServerError().finish();
+        // HttpResponse::InternalServerError().finish();
+        let resp = GenerateAddressResponse::new(
+            "Error inserting generated address for user in the database",
+            None,
+        );
+        return HttpResponse::ExpectationFailed().json(resp);
     }
 
     let resp = GenerateAddressResponse::new(
@@ -81,7 +86,7 @@ pub async fn gen_multisig_address(
         }
         Err(error) => {
             let resp = GenerateAddressResponse::new(
-                "Error retreiving service keys {:?}",
+                "Error retreiving service keys",
                 None,
             );
             return HttpResponse::ExpectationFailed().json(resp);

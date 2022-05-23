@@ -1,8 +1,12 @@
 use crate::basetest::spawn_app;
 use std::collections::HashMap;
+pub use cosign::domain::{NewUser, UserEmail, UserPassword};
+pub use cosign::routes::users::{insert_user};
+use actix_web::HttpResponse;
+use sqlx::{Pool, pool};
 
 
-// #[tokio::test]
+// #[actix_rt::test]
 async fn generate_address_returns_valid_json_data_test() {
     // 1. Arrange
     let test_app = spawn_app().await;
@@ -10,6 +14,13 @@ async fn generate_address_returns_valid_json_data_test() {
 
     let url = format!("{}/gen_multisig_addr", &test_app.address);
 
+    let new_user = NewUser {email: UserEmail::parse("user@email.com".to_string()).unwrap(), password: UserPassword::parse("password".to_string()).unwrap() };
+
+    //  match insert_user(&pool, &new_user).await {
+    //     Ok(_) => HttpResponse::Created().finish(),
+    //     Err(_) => HttpResponse::InternalServerError().finish(),
+    // };
+    
     // 2. Act
     let mut body = HashMap::new();
     body.insert("x_pub_1".to_string(), "tpubD6NzVbkrYhZ4XubsZFiR1YuVq16dxAzt3hWYFtu1sEH7w1LN5gqJnWVtzqZVKrwSej6Pja8tLr4FvyQ9gUuthQ3HVPcfy9cLXhFRjBYMcR9".to_string());
