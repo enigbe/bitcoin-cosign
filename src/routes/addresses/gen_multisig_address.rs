@@ -30,12 +30,6 @@ pub async fn gen_multisig_address(
         Ok(server_x_pub_key) => {
             let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub_key.as_str()).unwrap();
 
-    // let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
-    // let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
-
-    // let mut user_xpub1;
-    // let mut user_xpub2;
-    // let mut user_id;
     let user_email = match UserEmail::parse(req.email.clone()) {
         Ok (email)=> {
             email
@@ -75,7 +69,7 @@ pub async fn gen_multisig_address(
 
             derivation_index += 1;
         }
-        Err(error) => {
+        Err(_error) => {
             derivation_index += 1;
         }
     }
@@ -84,9 +78,7 @@ pub async fn gen_multisig_address(
         keys::generate_child_xpub(&x_server_pub_key, derivation_index).unwrap();
 
     let child_x_pub_1 = keys::generate_child_xpub(&user_x_pub_1, derivation_index).unwrap();
-    let child_x_pub_2 = keys::generate_child_xpub(&user_x_pub_1, derivation_index).unwrap();
-
-
+    let child_x_pub_2 = keys::generate_child_xpub(&user_x_pub_2, derivation_index).unwrap();
 
     let script_from_xpubs = generate_script(child_x_pub_1, child_x_pub_2, child_server_x_pub).await;
 
@@ -123,7 +115,7 @@ pub async fn gen_multisig_address(
         .content_type(ContentType::json())
         .json(&resp)
         }
-        Err(error) => {
+        Err(_error) => {
             let resp = GenerateAddressResponse::new(
                 "Error retreiving service keys",
                 None,

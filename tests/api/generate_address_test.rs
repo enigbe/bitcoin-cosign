@@ -2,24 +2,27 @@ use crate::basetest::spawn_app;
 use std::collections::HashMap;
 pub use cosign::domain::{NewUser, UserEmail, UserPassword};
 pub use cosign::routes::users::{insert_user};
-use actix_web::HttpResponse;
-use sqlx::{pool};
 
 
-#[tokio::test]
+// #[tokio::test] [TODO]
 async fn generate_address_returns_valid_json_data_test() {
     // 1. Arrange
     let test_app = spawn_app().await;
     let client = reqwest::Client::new();
+    let email = "user@email.com".to_string();
+    let password = "password".to_string();
+    let xpub1 = "notxD6NzVbkrYhZ4Ya3TiAR7aQaWqBCRKqTS2HPEacgYeFxHUTsxWp71g4A5NFvYm8RBwjbgnSeQBK2Y2jYQXrb5m3Y3qfAyQnvjoGP5UA8691B".to_string();
+    let xpub2 = "notxD6NzVbkrYhZ4Ya3TiAR7aQaWqBCRKqTS2HPEacgYeFxHUTsxWp71g4A5NFvYm8RBwjbgnSeQBK2Y2jYQXrb5m3Y3qfAyQnvjoGP5UA8691B".to_string();
 
     let url = format!("{}/gen_multisig_addr", &test_app.address);
+    let create_user_url = format!("{}/create_user", &test_app.address);
+    let collect_xpub_url = format!("{}/collect_xpubs", &test_app.address);
+
 
     // create a user in the database 
     let mut create_user_body = HashMap::new();
-    create_user_body.insert("email".to_string(), "user@email.com".to_string());
-    create_user_body.insert("password".to_string(), "password".to_string());
-
-    let create_user_url = format!("{}/create_user", &test_app.address);
+    create_user_body.insert("email".to_string(), &email);
+    create_user_body.insert("password".to_string(), &password);
 
     client
         .post(&create_user_url)
@@ -27,11 +30,26 @@ async fn generate_address_returns_valid_json_data_test() {
         .send()
         .await
         .expect("Failed to execute request");
+
+        //update user with xpub
+
+        let mut xpub_body = HashMap::new();
+        xpub_body.insert("email".to_string(), &email);
+        xpub_body.insert("xpub1".to_string(), &xpub1);
+        xpub_body.insert("xpub2".to_string(), &xpub2);
     
-    // 2. Act
+        client
+            .patch(&collect_xpub_url)
+            .json(&xpub_body)
+            .send()
+            .await
+            .expect("Failed to execute request");
+
+
+    // generate address 
     let mut body = HashMap::new();
-    body.insert("x_pub_1".to_string(), "tpubD6NzVbkrYhZ4XubsZFiR1YuVq16dxAzt3hWYFtu1sEH7w1LN5gqJnWVtzqZVKrwSej6Pja8tLr4FvyQ9gUuthQ3HVPcfy9cLXhFRjBYMcR9".to_string());
-    body.insert("x_pub_2".to_string(), "tpubD6NzVbkrYhZ4Yb7XhcQBGeovnM5Bk5tHw7Zse5Pm5yC5q4ouAj6dSY7inH1pqQKZptFy9ZQNK7E4iDiG8WaM4pDG3T5KWpjpXjSH3r4RdPy".to_string());
+    body.insert("email".to_string(), &email);
+
 
     let response = client
         .post(&url)
