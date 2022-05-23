@@ -1,7 +1,9 @@
+use crate::domain::Xpub;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct Xpubs {
-    pub x_pub_1: String,
-    pub x_pub_2: String,
+    pub id: i32,
+    pub xpub1: Option<String>,
+    pub xpub2: Option<String>,
 }

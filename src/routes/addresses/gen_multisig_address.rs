@@ -1,5 +1,5 @@
 use crate::domain::{
-    DerivationIndex, GenerateAddressData, GenerateAddressResponse, NewAddressData, Xpubs,
+    DerivationIndex, GenerateAddressData, GenerateAddressResponse, NewAddressData, Xpubs, UserEmail,
 };
 use crate::routes::masterkeys::MasterKeys;
 use crate::utils::keys;
@@ -12,24 +12,60 @@ use bdk::bitcoin::blockdata::opcodes::all::{OP_CHECKMULTISIG, OP_PUSHNUM_2, OP_P
 use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
 use bdk::bitcoin::{hashes::sha256, util::bip32::ExtendedPubKey, Address, WScriptHash};
+use serde::Deserialize;
 use sqlx::PgPool;
 use std::str::FromStr;
 
+#[derive(Deserialize)]
+pub struct RequestEmail {
+    email: String,
+}
+
 //generate 2-0f-3 multisig address from user supplied xpubs
 pub async fn gen_multisig_address(
-    x_pubs: web::Json<Xpubs>,
+    req: web::Json<RequestEmail>,
     pool: web::Data<PgPool>,
 ) -> HttpResponse {
      match service_child_x_pub_key(&pool).await {
         Ok(server_x_pub_key) => {
             let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub_key.as_str()).unwrap();
-    let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
-    let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
 
-    //[TODO] Get login user data from header
-    let user_id = 1;
+    // let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
+    // let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
 
-    let last_index = get_user_derivation_index(user_id, &pool).await;
+    // let mut user_xpub1;
+    // let mut user_xpub2;
+    // let mut user_id;
+    let user_email = match UserEmail::parse(req.email.clone()) {
+        Ok (email)=> {
+            email
+        }
+        Err(_) => {
+            let resp = GenerateAddressResponse::new(
+                "Supplied user email is invalid",
+                None,
+            );
+            return HttpResponse::BadRequest().json(resp);
+        }
+    };
+    let saved_user_data = match get_user_x_pubs(user_email, &pool).await {
+        Ok(user_data) => user_data,
+        Err(_) => {
+            let resp = GenerateAddressResponse::new(
+                "Supplied user email does not have exist",
+                None,
+            );
+            return HttpResponse::BadRequest().json(resp);
+        }
+    };
+
+    let user_x_pub_1 = ExtendedPubKey::from_str(saved_user_data.xpub1.unwrap().as_str()).unwrap();
+    let user_x_pub_2 = ExtendedPubKey::from_str(saved_user_data.xpub2.unwrap().as_str()).unwrap();
+
+    //[TODO] Get login user data from header 
+    //instead use the useremail
+
+    let last_index = get_user_derivation_index(saved_user_data.id, &pool).await;
 
     let mut derivation_index = 0;
 
@@ -46,8 +82,11 @@ pub async fn gen_multisig_address(
 
     let child_server_x_pub =
         keys::generate_child_xpub(&x_server_pub_key, derivation_index).unwrap();
-    let child_x_pub_1 = keys::generate_child_xpub(&user_x_pub_key_1, derivation_index).unwrap();
-    let child_x_pub_2 = keys::generate_child_xpub(&user_x_pub_key_2, derivation_index).unwrap();
+
+    let child_x_pub_1 = keys::generate_child_xpub(&user_x_pub_1, derivation_index).unwrap();
+    let child_x_pub_2 = keys::generate_child_xpub(&user_x_pub_1, derivation_index).unwrap();
+
+
 
     let script_from_xpubs = generate_script(child_x_pub_1, child_x_pub_2, child_server_x_pub).await;
 
@@ -57,7 +96,7 @@ pub async fn gen_multisig_address(
     // [TODO] validate address
     // [TODO] replace the user id with a real user id
     let new_address_data = NewAddressData {
-        user_id,
+        user_id: saved_user_data.id,
         derivation_path: derivation_index.to_string(),
         child_pubk_1: child_x_pub_1.to_string(),
         child_pubk_2: child_x_pub_2.to_string(),
@@ -176,6 +215,25 @@ pub async fn get_user_derivation_index(
     .await?;
 
     Ok(derivation_index)
+}
+
+
+pub async fn get_user_x_pubs(
+    user_email: UserEmail,
+    pool: &PgPool,
+) -> Result<Xpubs, sqlx::Error> {
+
+    let user_data = sqlx::query_as!(
+        Xpubs,
+        r#"
+            SELECT id, xpub1, xpub2 FROM users WHERE email = ($1)
+            "#,
+            user_email.as_ref(),
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(user_data)
 }
 
 pub async fn get_master_service_keys(pool: &PgPool) -> Result<MasterKeys, sqlx::Error> {

@@ -3,10 +3,10 @@ use std::collections::HashMap;
 pub use cosign::domain::{NewUser, UserEmail, UserPassword};
 pub use cosign::routes::users::{insert_user};
 use actix_web::HttpResponse;
-use sqlx::{Pool, pool};
+use sqlx::{pool};
 
 
-// #[actix_rt::test]
+#[tokio::test]
 async fn generate_address_returns_valid_json_data_test() {
     // 1. Arrange
     let test_app = spawn_app().await;
@@ -14,12 +14,19 @@ async fn generate_address_returns_valid_json_data_test() {
 
     let url = format!("{}/gen_multisig_addr", &test_app.address);
 
-    let new_user = NewUser {email: UserEmail::parse("user@email.com".to_string()).unwrap(), password: UserPassword::parse("password".to_string()).unwrap() };
+    // create a user in the database 
+    let mut create_user_body = HashMap::new();
+    create_user_body.insert("email".to_string(), "user@email.com".to_string());
+    create_user_body.insert("password".to_string(), "password".to_string());
 
-    //  match insert_user(&pool, &new_user).await {
-    //     Ok(_) => HttpResponse::Created().finish(),
-    //     Err(_) => HttpResponse::InternalServerError().finish(),
-    // };
+    let create_user_url = format!("{}/create_user", &test_app.address);
+
+    client
+        .post(&create_user_url)
+        .json(&create_user_body)
+        .send()
+        .await
+        .expect("Failed to execute request");
     
     // 2. Act
     let mut body = HashMap::new();
