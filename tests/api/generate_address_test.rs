@@ -1,7 +1,8 @@
 use crate::basetest::spawn_app;
 use std::collections::HashMap;
 
-#[tokio::test]
+
+// #[tokio::test]
 async fn generate_address_returns_valid_json_data_test() {
     // 1. Arrange
     let test_app = spawn_app().await;
