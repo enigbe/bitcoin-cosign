@@ -1,4 +1,7 @@
-use crate::domain::{GenerateAddressData, GenerateAddressResponse, Xpubs};
+use crate::domain::{
+    DerivationIndex, GenerateAddressData, GenerateAddressResponse, NewAddressData, UserEmail, Xpubs,
+};
+use crate::routes::masterkeys::MasterKeys;
 use crate::utils::keys;
 use actix_web::{
     http::header::ContentType,
@@ -8,37 +11,85 @@ use actix_web::{
 use bdk::bitcoin::blockdata::opcodes::all::{OP_CHECKMULTISIG, OP_PUSHNUM_2, OP_PUSHNUM_3};
 use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
-use bdk::bitcoin::Network;
-use bdk::keys::bip39::Mnemonic;
-use bdk::{
-    bitcoin::{hashes::sha256, util::bip32::ExtendedPubKey, Address, WScriptHash},
-    keys::ExtendedKey,
-};
+use bdk::bitcoin::{hashes::sha256, util::bip32::ExtendedPubKey, Address, WScriptHash};
+use serde::Deserialize;
 use sqlx::PgPool;
 use std::str::FromStr;
 
+#[derive(Deserialize)]
+pub struct RequestEmail {
+    email: String,
+}
+
 //generate 2-0f-3 multisig address from user supplied xpubs
 pub async fn gen_multisig_address(
-    x_pubs: web::Json<Xpubs>,
-    _pool: web::Data<PgPool>,
+    req: web::Json<RequestEmail>,
+    pool: web::Data<PgPool>,
 ) -> HttpResponse {
-    //call the module that generates xpub;
-    let server_x_pub: String = service_generated_x_pub_key().await;
-    let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub.as_str()).unwrap();
-    let user_x_pub_key_1 = ExtendedPubKey::from_str(x_pubs.x_pub_1.as_str()).unwrap();
-    let user_x_pub_key_2 = ExtendedPubKey::from_str(x_pubs.x_pub_2.as_str()).unwrap();
+    //validate the supplied user email
+    let user_email = match UserEmail::parse(req.email.clone()) {
+        Ok(email) => email,
+        Err(_) => {
+            let resp = GenerateAddressResponse::new("Supplied user email is invalid", None);
+            return HttpResponse::BadRequest().json(resp);
+        }
+    };
 
-    let script_from_xpubs =
-        generate_script(user_x_pub_key_1, user_x_pub_key_2, x_server_pub_key).await;
+    //get the user saved data (xpubs)
+    let saved_user_data = match get_user_x_pubs(user_email, &pool).await {
+        Ok(user_data) => user_data,
+        Err(_) => {
+            let resp =
+                GenerateAddressResponse::new("Supplied user email does not have exist", None);
+            return HttpResponse::BadRequest().json(resp);
+        }
+    };
 
-    let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
+    //derive the user x-pubs from their saved data
+    let user_xpubk1 = ExtendedPubKey::from_str(saved_user_data.xpub1.unwrap().as_str()).unwrap();
+    let user_xpubk2 = ExtendedPubKey::from_str(saved_user_data.xpub2.unwrap().as_str()).unwrap();
 
-    let address = Address::p2wsh(&script_from_wt_hash, Network::Regtest);
-    //validate address
+    //get the user last derivation index
+    let last_index = get_user_derivation_index(saved_user_data.id, &pool).await;
+
+    let mut derivation_index: u32 = 0;
+
+    match last_index {
+        Ok(last_index) => {
+            derivation_index = last_index.derivation_path.parse().unwrap();
+            derivation_index += 1;
+        }
+        Err(_error) => {
+            derivation_index += 1;
+        }
+    }
+
+    let server_x_pub_key = match service_x_pub_key(&pool).await {
+        Ok(server_x_pub_key) => server_x_pub_key,
+        Err(_error) => {
+            let resp = GenerateAddressResponse::new("Error retreiving service keys", None);
+            return HttpResponse::ExpectationFailed().json(resp);
+        }
+    };
+
+    //generate address
+    let new_address_data: NewAddressData =
+        generate_address(server_x_pub_key, user_xpubk1, user_xpubk2, derivation_index, saved_user_data.id).await;
+
+    if let Ok(_) = insert_keys(&pool, &new_address_data).await {
+        HttpResponse::Created().finish();
+    } else {
+        // HttpResponse::InternalServerError().finish();
+        let resp = GenerateAddressResponse::new(
+            "Error inserting generated address for user in the database",
+            None,
+        );
+        return HttpResponse::ExpectationFailed().json(resp);
+    }
 
     let resp = GenerateAddressResponse::new(
         "Address generated successfully",
-        GenerateAddressData::new(&address),
+        Some(GenerateAddressData::new(&new_address_data.address)),
     );
 
     HttpResponse::Ok()
@@ -46,6 +97,40 @@ pub async fn gen_multisig_address(
         .json(&resp)
 }
 
+//generate address from the script hash
+pub async fn generate_address(
+    server_x_pub_key: ExtendedPubKey,
+    user_xpubk1: ExtendedPubKey,
+    user_xpubk2: ExtendedPubKey,
+    derivation_index: u32,
+    user_id: i32,
+) -> NewAddressData {
+    let service_child_pub_key =
+        keys::generate_child_xpub(&server_x_pub_key, derivation_index).unwrap();
+    let user_child_pubk1 = keys::generate_child_xpub(&user_xpubk1, derivation_index).unwrap();
+    let user_child_pubk2 = keys::generate_child_xpub(&user_xpubk2, derivation_index).unwrap();
+
+    let script_from_xpubs =
+        generate_script(user_child_pubk1, user_child_pubk2, service_child_pub_key).await;
+
+    let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
+
+    let address: Address = Address::p2wsh(&script_from_wt_hash, service_child_pub_key.network);
+
+    // [TODO] validate address
+    let new_address_data = NewAddressData {
+        user_id,
+        derivation_path: derivation_index.to_string(),
+        child_pubk_1: user_child_pubk1.to_string(),
+        child_pubk_2: user_child_pubk2.to_string(),
+        service_pubk: service_child_pub_key.to_string(),
+        address
+    };
+
+    new_address_data
+}
+
+//generate script hash
 pub async fn generate_script(
     x_pub: ExtendedPubKey,
     x_pub_2: ExtendedPubKey,
@@ -92,21 +177,99 @@ pub fn validate_address(address: String) -> bool {
         false
     }
 }
+//get the service keys
+pub async fn service_x_pub_key(pool: &PgPool) -> Result<ExtendedPubKey, sqlx::Error> {
+    let master_keys = get_master_service_keys(&pool).await;
 
-pub async fn service_generated_x_pub_key() -> String {
-    let mnemonic: Mnemonic = keys::generate_mnemonic();
+    match master_keys {
+        Ok(master_key) => {
+            let x_pub_key = ExtendedPubKey::from_str(&master_key.master_xpub).unwrap();
+            Ok(x_pub_key)
+        }
+        Err(error) => {
+            println!("{:?}", error);
+            Err(error)
+        }
+    }
+}
 
-    let xtended_key: ExtendedKey = keys::generate_extended_key(&mnemonic);
+pub async fn get_user_derivation_index(
+    user_id: i32,
+    pool: &PgPool,
+) -> Result<DerivationIndex, sqlx::Error> {
+    let derivation_index = sqlx::query_as!(
+        DerivationIndex,
+        r#"
+        select derivation_path from addresses where user_id=$1 ORDER by derivation_path DESC LIMIT 1
+        "#,
+        user_id,
+    )
+    .fetch_one(pool)
+    .await?;
 
-    keys::generate_base58_xpub(xtended_key, Network::Regtest)
+    Ok(derivation_index)
+}
+
+pub async fn get_user_x_pubs(user_email: UserEmail, pool: &PgPool) -> Result<Xpubs, sqlx::Error> {
+    let user_data = sqlx::query_as!(
+        Xpubs,
+        r#"
+            SELECT id, xpub1, xpub2 FROM users WHERE email = ($1)
+            "#,
+        user_email.as_ref(),
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(user_data)
+}
+
+pub async fn get_master_service_keys(pool: &PgPool) -> Result<MasterKeys, sqlx::Error> {
+    let network = option_env!("NETWORK");
+    let keys = sqlx::query_as!(
+        MasterKeys,
+        r#"
+            SELECT master_xpub, master_xpriv FROM service_keys WHERE network=$1 LIMIT 1
+            "#,
+        network,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(keys)
+}
+
+/// Insert address related data
+pub async fn insert_keys(
+    pool: &PgPool,
+    new_address_data: &NewAddressData,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        INSERT INTO addresses (user_id, derivation_path, child_pubk_1, child_pubk_2, service_pubk)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+        new_address_data.user_id,
+        new_address_data.derivation_path,
+        new_address_data.child_pubk_1,
+        new_address_data.child_pubk_2,
+        new_address_data.service_pubk,
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        println!("Failed to execute query: {:?}", e);
+        e
+    })?;
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use crate::routes::addresses::generate_script;
+    use crate::routes::addresses::{generate_script, get_master_service_keys};
     use bitcoin::util::bip32::ExtendedPubKey;
+    use std::str::FromStr;
 
     #[actix_rt::test]
     async fn generate_valid_script() {
