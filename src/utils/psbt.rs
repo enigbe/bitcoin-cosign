@@ -16,7 +16,7 @@ use bitcoincore_rpc;
 ///                 UTXO's script_pubkey is the 2-of-3 multisig address
 ///     address (Address): The destination address
 pub fn create_psbt(txid: Txid, vout: u32, amount: u32, address: Address) {
-    let tx = Transaction 
-    let psbt = PartiallySignedTransaction::from_unsigned_tx(tx);
+    // let tx = Transaction 
+    // let psbt = PartiallySignedTransaction::from_unsigned_tx(tx);
     todo!()
 }

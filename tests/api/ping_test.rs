@@ -2,7 +2,7 @@ use crate::basetest::spawn_app;
 use reqwest;
 
 /// test the ping endpoint to confirm the server is running
-#[tokio::test]
+// #[tokio::test]
 async fn ping_test() {
     // 1. Arrange
     let test_app = spawn_app().await;
