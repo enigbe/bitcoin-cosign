@@ -26,98 +26,95 @@ pub async fn gen_multisig_address(
     req: web::Json<RequestEmail>,
     pool: web::Data<PgPool>,
 ) -> HttpResponse {
-    match service_child_x_pub_key(&pool).await {
-        Ok(server_x_pub_key) => {
-            let x_server_pub_key = ExtendedPubKey::from_str(&server_x_pub_key.as_str()).unwrap();
 
-            let user_email = match UserEmail::parse(req.email.clone()) {
-                Ok(email) => email,
-                Err(_) => {
-                    let resp = GenerateAddressResponse::new("Supplied user email is invalid", None);
-                    return HttpResponse::BadRequest().json(resp);
-                }
-            };
-            let saved_user_data = match get_user_x_pubs(user_email, &pool).await {
-                Ok(user_data) => user_data,
-                Err(_) => {
-                    let resp = GenerateAddressResponse::new(
-                        "Supplied user email does not have exist",
-                        None,
-                    );
-                    return HttpResponse::BadRequest().json(resp);
-                }
-            };
-
-            let user_x_pub_1 =
-                ExtendedPubKey::from_str(saved_user_data.xpub1.unwrap().as_str()).unwrap();
-            let user_x_pub_2 =
-                ExtendedPubKey::from_str(saved_user_data.xpub2.unwrap().as_str()).unwrap();
-
-            //[TODO] Get login user data from header
-            //instead use the useremail
-
-            let last_index = get_user_derivation_index(saved_user_data.id, &pool).await;
-
-            let mut derivation_index = 0;
-
-            match last_index {
-                Ok(last_index) => {
-                    derivation_index = last_index.derivation_path.parse().unwrap();
-
-                    derivation_index += 1;
-                }
-                Err(_error) => {
-                    derivation_index += 1;
-                }
-            }
-
-            let child_server_x_pub =
-                keys::generate_child_xpub(&x_server_pub_key, derivation_index).unwrap();
-
-            let child_x_pub_1 = keys::generate_child_xpub(&user_x_pub_1, derivation_index).unwrap();
-            let child_x_pub_2 = keys::generate_child_xpub(&user_x_pub_2, derivation_index).unwrap();
-
-            let script_from_xpubs =
-                generate_script(child_x_pub_1, child_x_pub_2, child_server_x_pub).await;
-
-            let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
-
-            let address = Address::p2wsh(&script_from_wt_hash, x_server_pub_key.network);
-            // [TODO] validate address
-            // [TODO] replace the user id with a real user id
-            let new_address_data = NewAddressData {
-                user_id: saved_user_data.id,
-                derivation_path: derivation_index.to_string(),
-                child_pubk_1: child_x_pub_1.to_string(),
-                child_pubk_2: child_x_pub_2.to_string(),
-                service_pubk: child_server_x_pub.to_string(),
-            };
-
-            if let Ok(_) = insert_keys(&pool, &new_address_data).await {
-                HttpResponse::Created().finish();
-            } else {
-                // HttpResponse::InternalServerError().finish();
-                let resp = GenerateAddressResponse::new(
-                    "Error inserting generated address for user in the database",
-                    None,
-                );
-                return HttpResponse::ExpectationFailed().json(resp);
-            }
-
-            let resp = GenerateAddressResponse::new(
-                "Address generated successfully",
-                Some(GenerateAddressData::new(&address)),
-            );
-
-            HttpResponse::Ok()
-                .content_type(ContentType::json())
-                .json(&resp)
+    //validate the supplied user email
+    let user_email = match UserEmail::parse(req.email.clone()) {
+        Ok(email) => email,
+        Err(_) => {
+            let resp = GenerateAddressResponse::new("Supplied user email is invalid", None);
+            return HttpResponse::BadRequest().json(resp);
         }
+    };
+
+    //get the user saved data (xpubs)
+    let saved_user_data = match get_user_x_pubs(user_email, &pool).await {
+        Ok(user_data) => user_data,
+        Err(_) => {
+            let resp =
+                GenerateAddressResponse::new("Supplied user email does not have exist", None);
+            return HttpResponse::BadRequest().json(resp);
+        }
+    };
+
+    //derive the user x-pubs from their saved data
+    let user_xpubk1 = ExtendedPubKey::from_str(saved_user_data.xpub1.unwrap().as_str()).unwrap();
+    let user_xpubk2 = ExtendedPubKey::from_str(saved_user_data.xpub2.unwrap().as_str()).unwrap();
+
+    //get the user last derivation index
+    let last_index = get_user_derivation_index(saved_user_data.id, &pool).await;
+
+    let mut derivation_index = 0;
+
+    match last_index {
+        Ok(last_index) => {
+            derivation_index = last_index.derivation_path.parse().unwrap();
+
+            derivation_index += 1;
+        }
+        Err(_error) => {
+            derivation_index += 1;
+        }
+    }
+
+
+    let server_x_pub_key = match service_x_pub_key(&pool).await {
+        Ok(server_x_pub_key) => server_x_pub_key,
         Err(_error) => {
             let resp = GenerateAddressResponse::new("Error retreiving service keys", None);
             return HttpResponse::ExpectationFailed().json(resp);
         }
+    };
+
+    let service_child_pub_key =
+        keys::generate_child_xpub(&server_x_pub_key, derivation_index).unwrap();
+    let user_child_pubk1 = keys::generate_child_xpub(&user_xpubk1, derivation_index).unwrap();
+    let user_child_pubk2 = keys::generate_child_xpub(&user_xpubk2, derivation_index).unwrap();
+
+    let script_from_xpubs = generate_script(user_child_pubk1, user_child_pubk2, service_child_pub_key).await;
+
+    let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
+
+    let address = Address::p2wsh(&script_from_wt_hash, service_child_pub_key.network);
+
+    // [TODO] validate address
+    // [TODO] replace the user id with a real user id
+    let new_address_data = NewAddressData {
+        user_id: saved_user_data.id,
+        derivation_path: derivation_index.to_string(),
+        child_pubk_1: user_child_pubk1.to_string(),
+        child_pubk_2: user_child_pubk2.to_string(),
+        service_pubk: service_child_pub_key.to_string(),
+    };
+
+    if let Ok(_) = insert_keys(&pool, &new_address_data).await {
+        HttpResponse::Created().finish();
+    } else {
+        // HttpResponse::InternalServerError().finish();
+        let resp = GenerateAddressResponse::new(
+            "Error inserting generated address for user in the database",
+            None,
+        );
+        return HttpResponse::ExpectationFailed().json(resp);
     }
+
+    let resp = GenerateAddressResponse::new(
+        "Address generated successfully",
+        Some(GenerateAddressData::new(&address)),
+    );
+
+    HttpResponse::Ok()
+        .content_type(ContentType::json())
+        .json(&resp)
 }
 
 pub async fn generate_script(
@@ -166,20 +163,14 @@ pub fn validate_address(address: String) -> bool {
         false
     }
 }
-pub async fn service_child_x_pub_key(pool: &PgPool) -> Result<String, sqlx::Error> {
+//get the service keys
+pub async fn service_x_pub_key(pool: &PgPool) -> Result<ExtendedPubKey, sqlx::Error> {
     let master_keys = get_master_service_keys(&pool).await;
 
     match master_keys {
         Ok(master_key) => {
             let x_pub_key = ExtendedPubKey::from_str(&master_key.master_xpub).unwrap();
-
-            let child_number = x_pub_key.child_number.to_string();
-
-            let num: u32 = child_number.parse().unwrap();
-
-            let child_pub_key = keys::generate_child_xpub(&x_pub_key, num);
-
-            Ok(child_pub_key.unwrap().to_string())
+            Ok(x_pub_key)
         }
         Err(error) => {
             println!("{:?}", error);
