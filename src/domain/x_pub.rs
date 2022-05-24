@@ -1,4 +1,3 @@
-use crate::domain::Xpub;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]

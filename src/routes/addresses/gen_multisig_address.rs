@@ -26,7 +26,6 @@ pub async fn gen_multisig_address(
     req: web::Json<RequestEmail>,
     pool: web::Data<PgPool>,
 ) -> HttpResponse {
-
     //validate the supplied user email
     let user_email = match UserEmail::parse(req.email.clone()) {
         Ok(email) => email,
@@ -53,19 +52,17 @@ pub async fn gen_multisig_address(
     //get the user last derivation index
     let last_index = get_user_derivation_index(saved_user_data.id, &pool).await;
 
-    let mut derivation_index = 0;
+    let mut derivation_index: u32 = 0;
 
     match last_index {
         Ok(last_index) => {
             derivation_index = last_index.derivation_path.parse().unwrap();
-
             derivation_index += 1;
         }
         Err(_error) => {
             derivation_index += 1;
         }
     }
-
 
     let server_x_pub_key = match service_x_pub_key(&pool).await {
         Ok(server_x_pub_key) => server_x_pub_key,
@@ -75,26 +72,9 @@ pub async fn gen_multisig_address(
         }
     };
 
-    let service_child_pub_key =
-        keys::generate_child_xpub(&server_x_pub_key, derivation_index).unwrap();
-    let user_child_pubk1 = keys::generate_child_xpub(&user_xpubk1, derivation_index).unwrap();
-    let user_child_pubk2 = keys::generate_child_xpub(&user_xpubk2, derivation_index).unwrap();
-
-    let script_from_xpubs = generate_script(user_child_pubk1, user_child_pubk2, service_child_pub_key).await;
-
-    let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
-
-    let address = Address::p2wsh(&script_from_wt_hash, service_child_pub_key.network);
-
-    // [TODO] validate address
-    // [TODO] replace the user id with a real user id
-    let new_address_data = NewAddressData {
-        user_id: saved_user_data.id,
-        derivation_path: derivation_index.to_string(),
-        child_pubk_1: user_child_pubk1.to_string(),
-        child_pubk_2: user_child_pubk2.to_string(),
-        service_pubk: service_child_pub_key.to_string(),
-    };
+    //generate address
+    let new_address_data: NewAddressData =
+        generate_address(server_x_pub_key, user_xpubk1, user_xpubk2, derivation_index, saved_user_data.id).await;
 
     if let Ok(_) = insert_keys(&pool, &new_address_data).await {
         HttpResponse::Created().finish();
@@ -109,7 +89,7 @@ pub async fn gen_multisig_address(
 
     let resp = GenerateAddressResponse::new(
         "Address generated successfully",
-        Some(GenerateAddressData::new(&address)),
+        Some(GenerateAddressData::new(&new_address_data.address)),
     );
 
     HttpResponse::Ok()
@@ -117,6 +97,40 @@ pub async fn gen_multisig_address(
         .json(&resp)
 }
 
+//generate address from the script hash
+pub async fn generate_address(
+    server_x_pub_key: ExtendedPubKey,
+    user_xpubk1: ExtendedPubKey,
+    user_xpubk2: ExtendedPubKey,
+    derivation_index: u32,
+    user_id: i32,
+) -> NewAddressData {
+    let service_child_pub_key =
+        keys::generate_child_xpub(&server_x_pub_key, derivation_index).unwrap();
+    let user_child_pubk1 = keys::generate_child_xpub(&user_xpubk1, derivation_index).unwrap();
+    let user_child_pubk2 = keys::generate_child_xpub(&user_xpubk2, derivation_index).unwrap();
+
+    let script_from_xpubs =
+        generate_script(user_child_pubk1, user_child_pubk2, service_child_pub_key).await;
+
+    let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
+
+    let address: Address = Address::p2wsh(&script_from_wt_hash, service_child_pub_key.network);
+
+    // [TODO] validate address
+    let new_address_data = NewAddressData {
+        user_id,
+        derivation_path: derivation_index.to_string(),
+        child_pubk_1: user_child_pubk1.to_string(),
+        child_pubk_2: user_child_pubk2.to_string(),
+        service_pubk: service_child_pub_key.to_string(),
+        address
+    };
+
+    new_address_data
+}
+
+//generate script hash
 pub async fn generate_script(
     x_pub: ExtendedPubKey,
     x_pub_2: ExtendedPubKey,
@@ -225,11 +239,7 @@ pub async fn get_master_service_keys(pool: &PgPool) -> Result<MasterKeys, sqlx::
     Ok(keys)
 }
 
-/// Insert new user to database
-/// ***
-/// Parameters:
-///     pool (&PgPool): A shared reference to a Postgres connection pool
-///     new_user (&NewUser): A shared reference to a NewUser instance
+/// Insert address related data
 pub async fn insert_keys(
     pool: &PgPool,
     new_address_data: &NewAddressData,
@@ -259,7 +269,6 @@ pub async fn insert_keys(
 mod tests {
     use crate::routes::addresses::{generate_script, get_master_service_keys};
     use bitcoin::util::bip32::ExtendedPubKey;
-    use sqlx::PgPool;
     use std::str::FromStr;
 
     #[actix_rt::test]
