@@ -6,3 +6,8 @@ pub struct Xpubs {
     pub xpub1: Option<String>,
     pub xpub2: Option<String>,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct UserId {
+    pub id: i32,
+}

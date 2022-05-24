@@ -40,7 +40,7 @@ pub async fn gen_multisig_address(
         Ok(user_data) => user_data,
         Err(_) => {
             let resp =
-                GenerateAddressResponse::new("Supplied user email does not have exist", None);
+                GenerateAddressResponse::new("Supplied user email does not exist", None);
             return HttpResponse::BadRequest().json(resp);
         }
     };
@@ -76,7 +76,7 @@ pub async fn gen_multisig_address(
     let new_address_data: NewAddressData =
         generate_address(server_x_pub_key, user_xpubk1, user_xpubk2, derivation_index, saved_user_data.id).await;
 
-    if let Ok(_) = insert_keys(&pool, &new_address_data).await {
+    if let Ok(_) = insert_address_data(&pool, &new_address_data).await {
         HttpResponse::Created().finish();
     } else {
         // HttpResponse::InternalServerError().finish();
@@ -240,7 +240,7 @@ pub async fn get_master_service_keys(pool: &PgPool) -> Result<MasterKeys, sqlx::
 }
 
 /// Insert address related data
-pub async fn insert_keys(
+pub async fn insert_address_data(
     pool: &PgPool,
     new_address_data: &NewAddressData,
 ) -> Result<(), sqlx::Error> {

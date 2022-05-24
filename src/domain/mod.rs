@@ -6,12 +6,14 @@ pub mod xpub;
 pub mod x_pub;
 pub mod generated_address;
 pub mod new_address_data;
+pub mod user_transaction;
 
 pub use new_user::{NewUser, User};
 pub use user_email::UserEmail;
 pub use user_password::UserPassword;
 pub use user_xpub::UserXpubs;
 pub use xpub::Xpub;
-pub use x_pub::Xpubs;
+pub use x_pub::{Xpubs, UserId};
 pub use generated_address::{ GenerateAddressData, GenerateAddressResponse};
 pub use new_address_data::{AddressData, NewAddressData, DerivationIndex};
+pub use user_transaction::UserTransactionId;

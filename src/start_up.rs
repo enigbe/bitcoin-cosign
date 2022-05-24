@@ -31,7 +31,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
             .route("/collect_xpubs", web::patch().to(collect_xpub))
             .route("/gen_multisig_addr", web::post().to(gen_multisig_address))
             .route("/masterkeys", web::post().to(masterkeys))
-            .rooute("/cosign", web::post().to(cosign))
+            .route("/cosign", web::post().to(cosign))
             .app_data(db_pool.clone())
     })
     .listen(listener)?
