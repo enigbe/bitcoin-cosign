@@ -1,6 +1,14 @@
 use crate::domain::{NewUser, User, UserEmail, UserPassword};
-use actix_web::{web, HttpResponse};
-use sqlx::PgPool;
+use actix_web::{web, HttpResponse, http::StatusCode};
+use sqlx::{PgPool};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateUserResponse {
+    pub msg: String,
+    pub status: u16,
+    pub data: Option<UserEmail>,
+}
 
 /// Create a new user and save record to database
 /// The request body must be JSON and must contain an
@@ -11,13 +19,35 @@ pub async fn create_user(req: web::Json<User>, pool: web::Data<PgPool>) -> HttpR
     // 1.1. TODO: hash password
     let new_user = match req.0.try_into() {
         Ok(user) => user,
-        Err(_) => return HttpResponse::BadRequest().finish(),
+        Err(e) => {
+            let rsp_msg = CreateUserResponse {
+                msg: format!("ERROR: Unable to parse inputs. {:?}", e),
+                status: StatusCode::BAD_REQUEST.as_u16(),
+                data: None,
+            };
+            return HttpResponse::BadRequest().json(rsp_msg);
+         },
     };
 
     // 2. save record to DB
     match insert_user(&pool, &new_user).await {
-        Ok(_) => HttpResponse::Created().finish(),
-        Err(_) => HttpResponse::InternalServerError().finish(),
+        Ok(_) => {
+            let rsp_msg = CreateUserResponse {
+                msg: format!("SUCCESS: User account created successfully"),
+                status: StatusCode::CREATED.as_u16(),
+                data: Some(new_user.email),
+            };
+            HttpResponse::Created().json(rsp_msg)
+        },
+        Err(e) => {
+            println!("ERROR: {:?}", e);
+            let rsp_msg = CreateUserResponse {
+                msg: format!("ERROR: Error saving user to database. Duplicate email not permitted"),
+                status: StatusCode::BAD_REQUEST.as_u16(),
+                data: None,
+            };
+            return HttpResponse::BadRequest().json(rsp_msg);
+        },
     }
 }
 
