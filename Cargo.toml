@@ -27,6 +27,7 @@ rust-crypto="0.2.36"
 sha2="0.10.2"
 actix-rt="2.7.0"
 wiremock = "0.5.13"
+bitcoincore-rpc = "0.15.0"
 
 [dependencies.sqlx]
 version = "0.5.13"
