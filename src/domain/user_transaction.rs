@@ -1,5 +1,9 @@
+use bitcoin::{hashes::{hex::{FromHex}, sha256d::Hash}};
+use serde::{Deserialize, Serialize};
+use bitcoincore_rpc::bitcoin::Txid;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UserTransactionId(String);
 
 impl UserTransactionId {
@@ -12,5 +16,13 @@ impl UserTransactionId {
         } else {
             Err(format!("{} is not a valid transaction id.", trx_id))
         }
+    }
+
+    //convert to txid
+    pub fn convert_txid(trx_id: String) ->Txid {
+        let tx_hash:Hash = Hash::from_hex(&trx_id).unwrap();
+        // let trx_hash: Hash = FromHex::from_hex(&trx_id).unwrap();
+        let txid: Txid = Txid::try_from(tx_hash).unwrap();
+        txid
     }
 }

@@ -1,4 +1,4 @@
-use crate::routes::{collect_xpub, create_user, gen_multisig_address, masterkeys, cosign};
+use crate::routes::{collect_xpub, create_user, gen_multisig_address, masterkeys, collect_trx_input};
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpResponse, HttpServer, http::StatusCode};
 use sqlx::PgPool;
@@ -31,7 +31,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
             .route("/collect_xpubs", web::patch().to(collect_xpub))
             .route("/gen_multisig_addr", web::post().to(gen_multisig_address))
             .route("/masterkeys", web::post().to(masterkeys))
-            .route("/cosign", web::post().to(cosign))
+            .route("/collect_trx_input", web::post().to(collect_trx_input))
             .app_data(db_pool.clone())
     })
     .listen(listener)?

@@ -1,5 +1,5 @@
-pub mod cosign;
+pub mod transaction;
 
-pub use cosign::cosign;
+pub use transaction::collect_trx_input;
 
 
