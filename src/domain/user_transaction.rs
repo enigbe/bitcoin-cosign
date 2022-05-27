@@ -1,6 +1,17 @@
+use std::str::FromStr;
+
 use bitcoin::{hashes::{hex::{FromHex}, sha256d::Hash}};
 use serde::{Deserialize, Serialize};
 use bitcoincore_rpc::bitcoin::Txid;
+use crate::domain::TransactionPayload;
+
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct TransactionInputResponse {
+    pub msg: String,
+    pub status: u16,
+    pub data: Option<TransactionPayload>,
+}
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -9,13 +20,13 @@ pub struct UserTransactionId(String);
 impl UserTransactionId {
     //check that the supplied transaction is valid
 
-    pub fn validate(trx_id: String) -> Result<UserTransactionId, String> {
-        let tx_len:usize = trx_id.len();
-    //we assume that the length of a transaction is 64 chars (32 bytes) regardless of the network
-        if  tx_len == 64_usize {
-            Ok(Self(trx_id))
-        } else {
-            Err(format!("{} is not a valid transaction id.", trx_id))
+    pub fn validate(trx_id: String) -> Result<Txid, String> {
+        let transaction_id = Txid::from_str(trx_id.as_str());
+        match transaction_id {
+            Ok(tx_id) => Ok(tx_id),
+            Err(error) => {
+                Err(format!("{} is not a valid transaction id: {}", trx_id, error))
+            }
         }
     }
 
