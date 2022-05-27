@@ -73,9 +73,7 @@ async fn generate_address_returns_valid_json_data_test() {
 
     let resp_body = response.json::<GenerateAddressResponse>().await.unwrap();
     // 3. Assert
-    assert_eq!("Address generated successfully", resp_body.message);
+    assert_eq!("Address generated successfully", resp_body.msg);
     assert_eq!(62, resp_body.data.unwrap().address.len());
-    //assert response contains data
-    //assert data contains address
-    //assert address is not empty
+    assert_eq!(201, resp_body.status);
 }

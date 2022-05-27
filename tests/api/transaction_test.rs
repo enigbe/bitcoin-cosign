@@ -79,7 +79,7 @@ async fn collect_trx_input_test() {
         .expect("Failed to execute request");
 
     let resp_body = response.json::<GenerateAddressResponse>().await.unwrap();
-    assert_eq!("Address generated successfully", resp_body.message);
+    assert_eq!("Address generated successfully", resp_body.msg);
     assert_eq!(62, resp_body.data.unwrap().address.len());
 
 //1.4 collect inputs
