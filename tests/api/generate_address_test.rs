@@ -3,7 +3,7 @@ pub use cosign::domain::{GenerateAddressResponse, NewUser, UserEmail, UserPasswo
 pub use cosign::routes::users::insert_user;
 use std::collections::HashMap;
 
-// #[tokio::test]
+#[tokio::test]
 async fn generate_address_returns_valid_json_data_test() {
     // 1. Arrange
     let test_app = spawn_app().await;
@@ -47,8 +47,9 @@ async fn generate_address_returns_valid_json_data_test() {
     assert_eq!(200, collect_xpubs_resp.status().as_u16());
 
     // 1.3 ensure there is a record of service masterkeys
+    let network_to_use = option_env!("NETWORK");
     let mut keys_body = HashMap::new();
-    keys_body.insert("network", "regtest");
+    keys_body.insert("network", network_to_use);
 
     let masterkeys_resp = client
         .post(&masterkeys_url)
@@ -71,7 +72,6 @@ async fn generate_address_returns_valid_json_data_test() {
         .expect("Failed to execute request");
 
     let resp_body = response.json::<GenerateAddressResponse>().await.unwrap();
-
     // 3. Assert
     assert_eq!("Address generated successfully", resp_body.message);
     assert_eq!(62, resp_body.data.unwrap().address.len());

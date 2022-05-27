@@ -7,6 +7,8 @@ pub mod x_pub;
 pub mod generated_address;
 pub mod new_address_data;
 pub mod user_transaction;
+pub mod transaction_payload;
+pub mod address;
 
 pub use new_user::{NewUser, User};
 pub use user_email::UserEmail;
@@ -17,3 +19,5 @@ pub use x_pub::{Xpubs, UserId};
 pub use generated_address::{ GenerateAddressData, GenerateAddressResponse};
 pub use new_address_data::{AddressData, NewAddressData, DerivationIndex};
 pub use user_transaction::UserTransactionId;
+pub use transaction_payload::{TransactionAmount, TransactionPayload, NewTransactionPayload};
+pub use address::UserAddress;

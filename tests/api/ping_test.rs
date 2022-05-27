@@ -2,7 +2,7 @@ use crate::basetest::spawn_app;
 use reqwest;
 
 /// test the ping endpoint to confirm the server is running
-// #[tokio::test]
+#[tokio::test]
 async fn ping_test() {
     // 1. Arrange
     let test_app = spawn_app().await;
@@ -16,6 +16,5 @@ async fn ping_test() {
         .expect("Failed to execute request");
 
     // 3. Assert
-    assert!(response.status().is_success());
-    assert_eq!(Some(0), response.content_length());
+    assert!(response.status().is_success());                                      
 }
