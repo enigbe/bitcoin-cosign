@@ -1,5 +1,5 @@
 use crate::domain::{
-    UserId, UserEmail, UserTransactionId, AddressData, TransactionPayload, NewTransactionPayload
+    UserId, UserEmail, TransactionInputResponse, AddressData, TransactionPayload, NewTransactionPayload
 };
 use actix_web::{http::StatusCode, web, HttpResponse};
 use bitcoincore_rpc::bitcoincore_rpc_json::GetTxOutResult;
@@ -9,13 +9,6 @@ use bitcoincore_rpc::bitcoin::Txid;
 use bitcoincore_rpc::Error;
 
 
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct TransactionInputResponse {
-    pub msg: String,
-    pub status: u16,
-    pub data: Option<TransactionPayload>,
-}
 
 //endpoint to collect a transaction inputs
 pub async fn collect_trx_input(
