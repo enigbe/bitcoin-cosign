@@ -1,5 +1,5 @@
 use crate::domain::{
-    DerivationIndex, GenerateAddressData, GenerateAddressResponse, NewAddressData, UserEmail, Xpubs,
+    DerivationIndex, GenerateAddressData, GenerateAddressResponse, NewAddressData, UserEmail, Xpubs
 };
 use crate::routes::masterkeys::MasterKeys;
 use crate::utils::keys;
@@ -12,6 +12,7 @@ use bdk::bitcoin::blockdata::opcodes::all::{OP_CHECKMULTISIG, OP_PUSHNUM_2, OP_P
 use bdk::bitcoin::blockdata::script::Script;
 use bdk::bitcoin::hashes::Hash;
 use bdk::bitcoin::{hashes::sha256, util::bip32::ExtendedPubKey, Address, WScriptHash};
+use reqwest::StatusCode;
 use serde::Deserialize;
 use sqlx::PgPool;
 use std::str::FromStr;
@@ -29,20 +30,27 @@ pub async fn gen_multisig_address(
     //validate the supplied user email
     let user_email = match UserEmail::parse(req.email.clone()) {
         Ok(email) => email,
-        Err(_) => {
-            let resp = GenerateAddressResponse::new("Supplied user email is invalid", None);
-            return HttpResponse::BadRequest().json(resp);
+        Err(error) => {
+           let rsp = GenerateAddressResponse {
+            msg: format!("Invalid input: {:?}", error),
+            status: StatusCode::BAD_REQUEST.as_u16(),
+            data: None,
+            };
+        return HttpResponse::BadRequest().json(rsp);
         }
     };
 
     //get the user saved data (xpubs)
     let saved_user_data = match get_user_x_pubs(user_email, &pool).await {
         Ok(user_data) => user_data,
-        Err(_) => {
-            let resp =
-                GenerateAddressResponse::new("Supplied user email does not exist", None);
-            return HttpResponse::BadRequest().json(resp);
-        }
+        Err(error) => {
+            let rsp = GenerateAddressResponse {
+             msg: format!("Supplied email does not exist: {:?}", error),
+             status: StatusCode::BAD_REQUEST.as_u16(),
+             data: None,
+             };
+         return HttpResponse::BadRequest().json(rsp);
+         }
     };
 
     //derive the user x-pubs from their saved data
@@ -50,15 +58,18 @@ pub async fn gen_multisig_address(
     let user_xpubk2 = ExtendedPubKey::from_str(saved_user_data.xpub2.unwrap().as_str()).unwrap();
 
     //get the user last derivation index
-
     let derivation_index = user_derivation_index(&pool, saved_user_data.id).await;
 
     let server_x_pub_key = match service_x_pub_key(&pool).await {
         Ok(server_x_pub_key) => server_x_pub_key,
-        Err(_error) => {
-            let resp = GenerateAddressResponse::new("Error retreiving service keys", None);
-            return HttpResponse::ExpectationFailed().json(resp);
-        }
+        Err(error) => {
+            let rsp = GenerateAddressResponse {
+             msg: format!("Error retrieving service keys: {:?}", error),
+             status: StatusCode::EXPECTATION_FAILED.as_u16(),
+             data: None,
+             };
+         return HttpResponse::ExpectationFailed().json(rsp);
+         }
     };
 
     //generate address
@@ -68,22 +79,21 @@ pub async fn gen_multisig_address(
     if let Ok(_) = insert_address_data(&pool, &new_address_data).await {
         HttpResponse::Created().finish();
     } else {
-        // HttpResponse::InternalServerError().finish();
-        let resp = GenerateAddressResponse::new(
-            "Error inserting generated address for user in the database",
-            None,
-        );
-        return HttpResponse::ExpectationFailed().json(resp);
+            let rsp = GenerateAddressResponse {
+             msg: format!("Error saving address data"),
+             status: StatusCode::BAD_REQUEST.as_u16(),
+             data: None,
+             };
+         return HttpResponse::BadRequest().json(rsp);
     }
 
-    let resp = GenerateAddressResponse::new(
-        "Address generated successfully",
-        Some(GenerateAddressData::new(&new_address_data.address)),
-    );
-
-    HttpResponse::Ok()
-        .content_type(ContentType::json())
-        .json(&resp)
+        let success = GenerateAddressResponse {
+         msg: format!("Address generated successfully"),
+         status: StatusCode::CREATED.as_u16(),
+         data: Some(GenerateAddressData::new(&new_address_data.address)),
+         };
+     return HttpResponse::Created().json(success);
+     
 }
 
 pub async fn user_derivation_index(pool: &PgPool,  user_id: i32,) -> u32 {
@@ -122,8 +132,6 @@ pub async fn generate_address(
     let script_from_wt_hash = Script::new_v0_wsh(&script_from_xpubs);
 
     let address: Address = Address::p2wsh(&script_from_wt_hash, service_child_pub_key.network);
-
-    // [TODO] validate address
 
     let new_address_data = NewAddressData {
         user_id,
