@@ -50,19 +50,8 @@ pub async fn gen_multisig_address(
     let user_xpubk2 = ExtendedPubKey::from_str(saved_user_data.xpub2.unwrap().as_str()).unwrap();
 
     //get the user last derivation index
-    let last_index = get_user_derivation_index(saved_user_data.id, &pool).await;
 
-    let mut derivation_index: u32 = 0;
-
-    match last_index {
-        Ok(last_index) => {
-            derivation_index = last_index.derivation_path.parse().unwrap();
-            derivation_index += 1;
-        }
-        Err(_error) => {
-            derivation_index += 1;
-        }
-    }
+    let derivation_index = user_derivation_index(&pool, saved_user_data.id).await;
 
     let server_x_pub_key = match service_x_pub_key(&pool).await {
         Ok(server_x_pub_key) => server_x_pub_key,
@@ -97,6 +86,23 @@ pub async fn gen_multisig_address(
         .json(&resp)
 }
 
+pub async fn user_derivation_index(pool: &PgPool,  user_id: i32,) -> u32 {
+    let last_index = get_user_derivation_index(user_id, &pool).await;
+
+    let mut derivation_index: u32 = 0;
+
+    match last_index {
+        Ok(last_index) => {
+            derivation_index = last_index.derivation_path.parse().unwrap();
+            derivation_index += 1;
+        }
+        Err(_error) => {
+            derivation_index += 1;
+        }
+    }
+    derivation_index
+}
+
 //generate address from the script hash
 pub async fn generate_address(
     server_x_pub_key: ExtendedPubKey,
@@ -118,6 +124,7 @@ pub async fn generate_address(
     let address: Address = Address::p2wsh(&script_from_wt_hash, service_child_pub_key.network);
 
     // [TODO] validate address
+
     let new_address_data = NewAddressData {
         user_id,
         derivation_path: derivation_index.to_string(),
