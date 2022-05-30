@@ -81,3 +81,4 @@ pub fn parse_user(req: User) -> Result<NewUser, String> {
 
     Ok(NewUser { email, password })
 }
+

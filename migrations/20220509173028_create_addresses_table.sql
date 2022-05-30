@@ -7,7 +7,7 @@ BEGIN;
 CREATE TABLE addresses(
 	id INT,
 	PRIMARY KEY (id),
-	user_id INT,
+	user_id INT NOT NULL,
 	derivation_path TEXT NOT NULL,
 	child_pubk_1 TEXT NOT NULL,
 	child_pubk_2 TEXT NOT NULL,

@@ -16,6 +16,5 @@ async fn ping_test() {
         .expect("Failed to execute request");
 
     // 3. Assert
-    assert!(response.status().is_success());
-    assert_eq!(Some(0), response.content_length());
+    assert!(response.status().is_success());                                      
 }

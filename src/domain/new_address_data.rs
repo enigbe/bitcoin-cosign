@@ -8,7 +8,6 @@ pub struct AddressData {
     pub child_pubk_1: String,
     pub child_pubk_2: String,
     pub service_pubk: String,
-    pub address: String,
 }
 
 #[derive(serde::Serialize)]
