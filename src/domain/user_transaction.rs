@@ -3,14 +3,14 @@ use std::str::FromStr;
 use bitcoin::{hashes::{hex::{FromHex}, sha256d::Hash}};
 use serde::{Deserialize, Serialize};
 use bitcoincore_rpc::bitcoin::Txid;
-use crate::domain::TransactionPayload;
+use crate::domain::NewTransactionPayload;
 
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct TransactionInputResponse {
     pub msg: String,
     pub status: u16,
-    pub data: Option<TransactionPayload>,
+    pub data: Option<NewTransactionPayload>,
 }
 
 

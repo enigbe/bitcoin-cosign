@@ -29,7 +29,7 @@ pub async fn collect_trx_input(
     };
 
     //check that the email exists
-    let user_id = match get_user_id(new_payload.email, &pool).await {
+    let user_id = match get_user_id(&new_payload.email, &pool).await {
         Ok(user_id) => user_id,
         Err(_) => {
             let rsp = TransactionInputResponse {
@@ -60,7 +60,17 @@ pub async fn collect_trx_input(
     //for multiple txds, these should be summed 
     let validate_trx = match check_txid_utxo(new_payload.transaction_id, new_payload.output_index).await {
         Ok(result) => {
-            let resp = result.unwrap();
+        let resp = match result {
+                Some(trx_details) => trx_details,
+                None => {
+                    let tx_resp = TransactionInputResponse {
+                        msg: "The given transaction id and output index does not contain UTXOs".to_string(),
+                        status: StatusCode::EXPECTATION_FAILED.as_u16(),
+                        data: None,
+                        };
+                        return HttpResponse::ExpectationFailed().json(tx_resp);
+                    }
+                };
             if (resp.value.as_sat().le(&new_payload.amount))  {
                 let resp = TransactionInputResponse {
                     msg: format!("Not enough sats in given UTXOs to complete this transaction. Total sats available: {:?}", resp.value.as_sat()).to_string(),
@@ -80,12 +90,10 @@ pub async fn collect_trx_input(
         }
     };
 
-
-
     let suc_res = TransactionInputResponse {
         msg: "User transaction inputs collected".to_string(),
         status: StatusCode::OK.as_u16(),
-        data: None,
+        data: Some(new_payload),
     };
     
     HttpResponse::Ok().json(suc_res)
@@ -94,7 +102,7 @@ pub async fn collect_trx_input(
 
 
 //get user id
-pub async fn get_user_id(user_email: UserEmail, pool: &PgPool) -> Result<UserId, sqlx::Error> {
+pub async fn get_user_id(user_email: &UserEmail, pool: &PgPool) -> Result<UserId, sqlx::Error> {
     let user_id = sqlx::query_as!(
         UserId,
         r#"

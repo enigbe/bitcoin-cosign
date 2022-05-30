@@ -28,7 +28,7 @@ pub struct TransactionPayload {
    pub email: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct NewTransactionPayload {
    pub address: Address,
    pub amount: u64,
