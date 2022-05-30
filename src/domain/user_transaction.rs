@@ -31,10 +31,16 @@ impl UserTransactionId {
     }
 
     //convert to txid
-    pub fn convert_txid(trx_id: String) ->Txid {
-        let tx_hash:Hash = Hash::from_hex(&trx_id).unwrap();
-        // let trx_hash: Hash = FromHex::from_hex(&trx_id).unwrap();
-        let txid: Txid = Txid::try_from(tx_hash).unwrap();
-        txid
+    pub fn convert_txid(trx_id: String) ->Result<Txid, String> {
+        let txid = Txid::from_str(&trx_id);
+
+        match txid {
+            Ok(trx_id) => Ok(trx_id),
+            Err(error) => {
+                Err(format!("Error converting given transaction id: {}", error))
+
+            }
+        }
+
     }
 }

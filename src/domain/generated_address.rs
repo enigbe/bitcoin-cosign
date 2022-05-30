@@ -13,7 +13,6 @@ pub struct GenerateAddressData {
 }
 
 impl GenerateAddressData {
-    // Construct address data
     pub fn new(generated_address: &Address) -> GenerateAddressData {
         GenerateAddressData {
             address: generated_address.to_string(),
@@ -21,15 +20,3 @@ impl GenerateAddressData {
     }
 }
 
-// impl GenerateAddressResponse {
-//     //construct response
-//     pub fn new(
-//         resp_message: &str,
-//         resp_data: Option<GenerateAddressData>,
-//     ) -> GenerateAddressResponse {
-//         GenerateAddressResponse {
-//             message: resp_message.to_string(),
-//             data: resp_data,
-//         }
-//     }
-// }
