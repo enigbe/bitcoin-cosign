@@ -55,7 +55,31 @@ pub async fn collect_trx_input(
     };
 
     //[TODO] - Generate addresses and scan the addresses for the given transaction id
-    
+    //check that the supplied address is valid using rpc
+    //check that the supplied txid contains utxos
+    //for multiple txds, these should be summed 
+    let validate_trx = match check_txid_utxo(new_payload.transaction_id, new_payload.output_index).await {
+        Ok(result) => {
+            let resp = result.unwrap();
+            if (resp.value.as_sat().le(&new_payload.amount))  {
+                let resp = TransactionInputResponse {
+                    msg: format!("Not enough sats in given UTXOs to complete this transaction. Total sats available: {:?}", resp.value.as_sat()).to_string(),
+                    status: StatusCode::EXPECTATION_FAILED.as_u16(),
+                    data: None,
+                };
+                return HttpResponse::ExpectationFailed().json(resp);
+            }
+        },
+        Err(error) => {
+            let resp = TransactionInputResponse {
+                msg: error.to_string(),
+                status: StatusCode::BAD_REQUEST.as_u16(),
+                data: None,
+            };
+            return HttpResponse::BadRequest().json(resp);
+        }
+    };
+
 
 
     let suc_res = TransactionInputResponse {
@@ -115,6 +139,6 @@ pub async fn check_txid_utxo(transaction_id:Txid, vout: u32) -> Result<Option<Ge
     .unwrap();
     let response = rpc.get_tx_out(&transaction_id, vout, Some(false));
 
-    todo!()
+  response
 
 }

@@ -10,9 +10,9 @@ use super::UserEmail;
 pub struct TransactionAmount(u64);
 
 impl TransactionAmount {
-    pub fn parse(amount: u64)->Result<Self, String> {
+    pub fn parse(amount: u64)->Result<u64, String> {
         if amount >= 1000 {
-            Ok(Self(amount))
+            Ok(amount)
         } else {
             Err(format!("{} does not meet min transaction limit.", amount))
         }
@@ -31,7 +31,7 @@ pub struct TransactionPayload {
 #[derive(Debug)]
 pub struct NewTransactionPayload {
    pub address: Address,
-   pub amount: TransactionAmount,
+   pub amount: u64,
    pub transaction_id: Txid,
    pub output_index: u32,
    pub email: UserEmail,
@@ -43,7 +43,7 @@ impl TryFrom<TransactionPayload> for NewTransactionPayload {
 
     fn try_from(payload: TransactionPayload) -> Result<NewTransactionPayload, Self::Error> {
         let amount  = payload.amount.parse::<u64>().unwrap();
-        let index :u32 = payload.output_index.parse::<u32>().unwrap();;
+        let index :u32 = payload.output_index.parse::<u32>().unwrap();
         let address = UserAddress::validate(payload.address)?;
         let amount = TransactionAmount::parse(amount)?;
         let transaction_id = UserTransactionId::validate(payload.transaction_id)?;
