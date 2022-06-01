@@ -1,6 +1,6 @@
 # Bitcoin-Cosign
 
-A collaborative custody service allowing users to protect their bitcoins by locking them to a 2-of-3 multisignature address. The address is created from two (2) user-supplied extended public keys and one provided by the service. This allows users to unlock their bitcoins independently by 2 valid signatures, or collaboratively by providing 1 valid signature, and getting the second from the service.
+A collaborative custody service allowing users to protect their bitcoins by locking them to a 2-of-3 multisignature address. The address is created from two (2) user-supplied extended public keys and one provided by the service. This allows users to unlock their bitcoins independently by two valid signatures, or collaboratively, by providing one valid signature, and getting the second from the service.
 
 ## MVP Status
 - Work in progess. 
