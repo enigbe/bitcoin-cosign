@@ -1,9 +1,12 @@
 use std::str::FromStr;
 
+use bdk::bitcoincore_rpc::RawTx;
 use bitcoin::{hashes::{hex::{FromHex}, sha256d::Hash}};
 use serde::{Deserialize, Serialize};
-use bitcoincore_rpc::bitcoin::Txid;
+use bitcoincore_rpc::{bitcoin::{Txid, Transaction}, RpcApi};
 use crate::domain::NewTransactionPayload;
+use crate::routes::transactions::init_rpc_client;
+
 
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -43,4 +46,22 @@ impl UserTransactionId {
         }
 
     }
+}
+
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RawTransaction (String);
+
+impl RawTransaction {
+    pub fn convert(raw_tx: String) -> Transaction {
+
+        let rpc_con = init_rpc_client();
+        let rpc = rpc_con.unwrap();
+
+        let raw_tx = rpc.get_raw_transaction(&Txid::from_str(&raw_tx.as_str()).unwrap(), None).unwrap();
+
+        // let raw_tx = RawTx::raw_hex(raw_tx.as_str());
+       raw_tx
+    }
+
 }
