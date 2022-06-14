@@ -29,6 +29,7 @@ actix-rt="2.7.0"
 wiremock = "0.5.13"
 bitcoincore-rpc = "0.15.0"
 dirs-next = "2.0.0"
+electrsd = { version= "0.19.1", features = ["bitcoind_22_0"] }
 
 [dependencies.sqlx]
 version = "0.5.13"

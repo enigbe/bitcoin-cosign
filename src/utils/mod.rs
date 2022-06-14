@@ -10,5 +10,6 @@ pub use keys::{
 
 pub use address::connect_to_bitcoind;
 pub use psbt::{
-    compose_multisig_output_descriptor, create_service_wallet, generate_service_output_descriptors,
+    _xpub_receive_change_desc, bitcoind_regtest, compose_multisig_output_descriptor,
+    create_service_wallet, generate_service_output_descriptors, multisig_address,
 };
