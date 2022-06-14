@@ -1,7 +1,5 @@
-use std::str::FromStr;
-
 use crate::domain::{
-    TransactionInputResponse, RawTransaction
+    RawTransaction, UserRawTransaction, BroadCastTrxResponse
 };
 use actix_web::{http::StatusCode, web, HttpResponse};
 use bitcoincore_rpc::bitcoin::{Txid, Transaction};
@@ -11,17 +9,25 @@ use bitcoincore_rpc::RawTx;
 use bitcoincore_rpc::Error;
 use crate::routes::transactions::init_rpc_client;
 
-#[derive(serde::Deserialize)]
-pub struct SuppliedPsbt {
-    raw_tx: String,
-}
 
 //endpoint to collect a transaction inputs
 pub async fn broadcast_psbt(
-    req: web::Json<SuppliedPsbt>,
+    req: web::Json<UserRawTransaction>,
 ) -> HttpResponse {
     // validate the supplied raw transaction is signed and finalised
-    let raw_tx = RawTransaction::convert(req.raw_tx.clone());
+    let raw_tx = match RawTransaction::convert(req.raw_tx.clone()) {
+        Ok(result) => result,
+        Err(error) => {
+            let resp = BroadCastTrxResponse {
+                msg: error.to_string(),
+                status: StatusCode::BAD_REQUEST.as_u16(),
+                data: None,
+            };
+            return HttpResponse::BadRequest().json(resp);
+        }
+    };
+
+
 
     //testmempool acceptance
 
@@ -31,7 +37,7 @@ pub async fn broadcast_psbt(
             if status.allowed {
                 // return raw_tx,
             }else {
-                let resp = TransactionInputResponse {
+                let resp = BroadCastTrxResponse {
                     msg: "Transaction not accepted into mempool".to_string(),
                     status: StatusCode::BAD_REQUEST.as_u16(),
                     data: None,
@@ -40,7 +46,7 @@ pub async fn broadcast_psbt(
             }
         },
         Err(error) => {
-            let resp = TransactionInputResponse {
+            let resp = BroadCastTrxResponse {
                 msg: error.to_string(),
                 status: StatusCode::BAD_REQUEST.as_u16(),
                 data: None,
@@ -52,16 +58,16 @@ pub async fn broadcast_psbt(
     //broadcast the transaction
     match broadcast_rawtrx(raw_tx) {
         Ok(txid) => {
-            let succ = TransactionInputResponse {
+            let succ = BroadCastTrxResponse {
                 msg: "Transaction broadcasted successfully".to_string(),
                 status: StatusCode::OK.as_u16(),
-                data: None
+                data: Some(txid)
             };
 
             return HttpResponse::Ok().json(succ);
         },
         Err(error) => {
-            let resp = TransactionInputResponse {
+            let resp = BroadCastTrxResponse {
                 msg: error.to_string(),
                 status: StatusCode::BAD_REQUEST.as_u16(),
                 data: None,
@@ -99,6 +105,7 @@ pub fn broadcast_rawtrx(raw_txid:Transaction)->Result<Txid, Error>{
     
     broadcast_response
 }
+
 
 
 

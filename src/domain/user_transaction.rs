@@ -1,11 +1,12 @@
 use std::str::FromStr;
-
 use bdk::bitcoincore_rpc::RawTx;
-use bitcoin::{hashes::{hex::{FromHex}, sha256d::Hash}};
+use bitcoin::{hashes::{hex::{FromHex}, sha256, sha256d, Hash}};
 use serde::{Deserialize, Serialize};
-use bitcoincore_rpc::{bitcoin::{Txid, Transaction}, RpcApi};
+use bitcoincore_rpc::{bitcoin::{Txid, Error, consensus::Decodable, Transaction}, RpcApi};
+use tokio::io::AsyncReadExt;
 use crate::domain::NewTransactionPayload;
 use crate::routes::transactions::init_rpc_client;
+use std::io::Read;
 
 
 
@@ -53,15 +54,47 @@ impl UserTransactionId {
 pub struct RawTransaction (String);
 
 impl RawTransaction {
-    pub fn convert(raw_tx: String) -> Transaction {
+
+    pub fn extract_txid_from_raw_hex(raw_tx: String) -> sha256d::Hash {
+
+        let txid_digest = sha256d::Hash::hash(&sha256::Hash::hash(&raw_tx.as_bytes()));
+
+        txid_digest
+    }
+
+    pub fn convert(raw_tx: String) -> Result<Transaction, String> {
 
         let rpc_con = init_rpc_client();
         let rpc = rpc_con.unwrap();
 
-        let raw_tx = rpc.get_raw_transaction(&Txid::from_str(&raw_tx.as_str()).unwrap(), None).unwrap();
+        // let raw_txid = Txid::from_hex(&raw_tx.as_str()).unwrap();
+        let raw_hash = RawTransaction::extract_txid_from_raw_hex(raw_tx);
 
-        // let raw_tx = RawTx::raw_hex(raw_tx.as_str());
-       raw_tx
+        let raw_txid = Txid::from_hash(raw_hash);
+
+        let raw_tx = rpc.get_raw_transaction(&raw_txid, None);
+        
+        match raw_tx {
+            Ok(raw) => Ok(raw),
+            Err(error) => {
+                Err(format!("Error converting supplied raw tx: {}", error))
+            }
+        }
     }
 
 }
+
+
+
+#[derive(serde::Deserialize)]
+pub struct UserRawTransaction {
+   pub raw_tx: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct BroadCastTrxResponse {
+    pub msg: String,
+    pub status: u16,
+    pub data: Option<Txid>,
+}
+

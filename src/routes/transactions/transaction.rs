@@ -71,7 +71,7 @@ pub async fn collect_trx_input(
                         return HttpResponse::ExpectationFailed().json(tx_resp);
                     }
                 };
-            if (resp.value.as_sat().le(&new_payload.amount))  {
+            if resp.value.as_sat().le(&new_payload.amount)  {
                 let resp = TransactionInputResponse {
                     msg: format!("Not enough sats in given UTXOs to complete this transaction. Total sats available: {:?}", resp.value.as_sat()).to_string(),
                     status: StatusCode::EXPECTATION_FAILED.as_u16(),
