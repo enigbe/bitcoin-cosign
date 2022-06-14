@@ -14,49 +14,9 @@ use crate::routes::transactions::init_rpc_client;
 pub async fn broadcast_psbt(
     req: web::Json<UserRawTransaction>,
 ) -> HttpResponse {
-    // validate the supplied raw transaction is signed and finalised
-    let raw_tx = match RawTransaction::convert(req.raw_tx.clone()) {
-        Ok(result) => result,
-        Err(error) => {
-            let resp = BroadCastTrxResponse {
-                msg: error.to_string(),
-                status: StatusCode::BAD_REQUEST.as_u16(),
-                data: None,
-            };
-            return HttpResponse::BadRequest().json(resp);
-        }
-    };
-
-
-
-    //testmempool acceptance
-
-    let validate_trx = match test_mempool_acceptance(&raw_tx) {
-        Ok(result) => {
-            let status = result.into_iter().find(|pty|pty.allowed == true).unwrap();
-            if status.allowed {
-                // return raw_tx,
-            }else {
-                let resp = BroadCastTrxResponse {
-                    msg: "Transaction not accepted into mempool".to_string(),
-                    status: StatusCode::BAD_REQUEST.as_u16(),
-                    data: None,
-                };
-                return HttpResponse::BadRequest().json(resp);
-            }
-        },
-        Err(error) => {
-            let resp = BroadCastTrxResponse {
-                msg: error.to_string(),
-                status: StatusCode::BAD_REQUEST.as_u16(),
-                data: None,
-            };
-            return HttpResponse::BadRequest().json(resp);
-        }
-    };
 
     //broadcast the transaction
-    match broadcast_rawtrx(raw_tx) {
+    match broadcast_rawtrx(req.raw_tx.clone()) {
         Ok(txid) => {
             let succ = BroadCastTrxResponse {
                 msg: "Transaction broadcasted successfully".to_string(),
@@ -85,23 +45,20 @@ pub fn test_mempool_acceptance(raw_txid:&Transaction) -> Result<Vec<TestMempoolA
     let rpc_con = init_rpc_client();
     let rpc = rpc_con.unwrap();
 
-    // let trx = rpc.get_raw_transaction(&Txid::from_str(raw_txid.as_str()).unwrap(), None).unwrap();
-
     let trx_array  = [raw_txid.raw_hex();1];
     let response = rpc.test_mempool_accept(&trx_array);
 
   response
 }
 
-pub fn broadcast_rawtrx(raw_txid:Transaction)->Result<Txid, Error>{
+pub fn broadcast_rawtrx(raw_txid: String)->Result<Txid, Error>{
 
     let rpc_con = init_rpc_client();
     let rpc = rpc_con.unwrap();
 
-    // let raw = RawTx::raw_hex(raw_txid.as_str());
-    // let trx = rpc.get_raw_transaction(&Txid::from_str(raw_txid.as_str()).unwrap(), None).unwrap();
+    let raw_hex = RawTx::raw_hex(raw_txid.as_str()).raw_hex();
 
-    let broadcast_response = rpc.send_raw_transaction(&raw_txid);
+    let broadcast_response = rpc.send_raw_transaction(&*raw_hex);
     
     broadcast_response
 }

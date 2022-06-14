@@ -131,7 +131,7 @@ pub async fn get_all_user_key_pairs(user_id:i32, pool: &PgPool) -> Result<Vec<Ad
 }
 
 pub fn init_rpc_client() -> Result<Client, Error> {
-    let rpc_testnet_url = "http://localhost:18332";
+    let rpc_testnet_url = "http://localhost:28332";
 
     let rpc = Client::new(
         rpc_testnet_url,

@@ -1,12 +1,9 @@
 use std::str::FromStr;
-use bdk::bitcoincore_rpc::RawTx;
-use bitcoin::{hashes::{hex::{FromHex}, sha256, sha256d, Hash}};
+use bitcoin::{hashes::{hex::FromHex}};
 use serde::{Deserialize, Serialize};
-use bitcoincore_rpc::{bitcoin::{Txid, Error, consensus::Decodable, Transaction}, RpcApi};
-use tokio::io::AsyncReadExt;
+use bitcoincore_rpc::{RpcApi, bitcoin::{Txid, Transaction, consensus}};
 use crate::domain::NewTransactionPayload;
 use crate::routes::transactions::init_rpc_client;
-use std::io::Read;
 
 
 
@@ -55,11 +52,12 @@ pub struct RawTransaction (String);
 
 impl RawTransaction {
 
-    pub fn extract_txid_from_raw_hex(raw_tx: String) -> sha256d::Hash {
+    pub fn extract_txid_from_raw_hex(raw_tx: String)->Txid  {
 
-        let txid_digest = sha256d::Hash::hash(&sha256::Hash::hash(&raw_tx.as_bytes()));
-
-        txid_digest
+        let tx_bytes = Vec::from_hex(&raw_tx).unwrap();
+        let tx: Transaction = consensus::encode::deserialize(&tx_bytes).unwrap();
+        let txid = tx.txid();
+        txid
     }
 
     pub fn convert(raw_tx: String) -> Result<Transaction, String> {
@@ -67,12 +65,9 @@ impl RawTransaction {
         let rpc_con = init_rpc_client();
         let rpc = rpc_con.unwrap();
 
-        // let raw_txid = Txid::from_hex(&raw_tx.as_str()).unwrap();
-        let raw_hash = RawTransaction::extract_txid_from_raw_hex(raw_tx);
+        let tx_id = RawTransaction::extract_txid_from_raw_hex(raw_tx);
 
-        let raw_txid = Txid::from_hash(raw_hash);
-
-        let raw_tx = rpc.get_raw_transaction(&raw_txid, None);
+        let raw_tx = rpc.get_raw_transaction(&tx_id, None);
         
         match raw_tx {
             Ok(raw) => Ok(raw),
@@ -98,3 +93,19 @@ pub struct BroadCastTrxResponse {
     pub data: Option<Txid>,
 }
 
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+
+    #[actix_rt::test]
+    async fn test_extract_txid_from_raw_hex() {
+        let raw_tx =  "02000000000101faecaca08b7a598cf484ef0d8f6731e33860a5dfb46a12a130e78ac4730111150000000000ffffffff01d8ce052a01000000160014d03bb275e7ea501cf926b458702e1cf0d54e46210247304402205ea676c864c2f3e811f47d767f225b640d7dc47bf4cd4ed8ff1b434ee909216402205f43ce7f44c332a5dd8812edff3aede826877eb17e40c15ed2baea5fc0bd9d2a0121022a369ed941445f85da7703c2e8dbcedc88e767015aa6049e4de238f322868f9b00000000".to_string();
+
+        let tx_hash = RawTransaction::extract_txid_from_raw_hex(raw_tx);
+       
+        assert_eq!(tx_hash.len(), 32);
+    }
+}
