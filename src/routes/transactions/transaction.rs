@@ -71,7 +71,7 @@ pub async fn collect_trx_input(
                         return HttpResponse::ExpectationFailed().json(tx_resp);
                     }
                 };
-            if (resp.value.as_sat().le(&new_payload.amount))  {
+            if resp.value.as_sat().le(&new_payload.amount)  {
                 let resp = TransactionInputResponse {
                     msg: format!("Not enough sats in given UTXOs to complete this transaction. Total sats available: {:?}", resp.value.as_sat()).to_string(),
                     status: StatusCode::EXPECTATION_FAILED.as_u16(),
@@ -130,12 +130,8 @@ pub async fn get_all_user_key_pairs(user_id:i32, pool: &PgPool) -> Result<Vec<Ad
     Ok(address_data)
 }
 
-
-
-//[TODO] check supplied txid and utxo
-pub async fn check_txid_utxo(transaction_id:Txid, vout: u32) -> Result<Option<GetTxOutResult>, Error> {
-
-    let rpc_testnet_url = "http://localhost:18332";
+pub fn init_rpc_client() -> Result<Client, Error> {
+    let rpc_testnet_url = "http://localhost:28332";
 
     let rpc = Client::new(
         rpc_testnet_url,
@@ -143,8 +139,17 @@ pub async fn check_txid_utxo(transaction_id:Txid, vout: u32) -> Result<Option<Ge
             "bitcoin".to_string(),
             "bitcoin".to_string(),
         ),
-    )
-    .unwrap();
+    );
+
+    rpc
+}
+
+// check supplied txid and utxo
+pub async fn check_txid_utxo(transaction_id:Txid, vout: u32) -> Result<Option<GetTxOutResult>, Error> {
+
+    let rpc_con = init_rpc_client();
+    let rpc = rpc_con.unwrap();
+
     let response = rpc.get_tx_out(&transaction_id, vout, Some(false));
 
   response

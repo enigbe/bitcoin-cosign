@@ -39,6 +39,7 @@ async fn collect_xpubs_returns_200_for_existing_user() {
     // 3. Assert
     // 3.1 Assert user is saved to DB
     assert_eq!(201, user_resp.status().as_u16());
+    assert_eq!(200, xpub_resp.status().as_u16());
 
     let saved_user = sqlx::query!("SELECT email FROM users",)
         .fetch_one(&test_app.db_pool)
